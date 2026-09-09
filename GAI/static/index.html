@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VNX — functional music sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ground */
+  --ink:        #12142A;
+  --ink-raised: #1A1D36;
+  --ink-sunk:   #0E1023;
+  --haze:       #2B2F52;
+  --haze-soft:  #21243F;
+
+  /* text */
+  --paper:  #E9E7F3;
+  --dim:    #8C92B8;
+  --dimmer: #626890;
+
+  /* the descent: warm current state -> cool target state */
+  --match:      #E3A76F;
+  --transition: #9E8CD6;
+  --settle:     #5FB9B0;
+
+  --danger: #E0766F;
+
+  --r-sm: 6px;
+  --r-md: 12px;
+  --r-lg: 18px;
+
+  --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: 'Newsreader', ui-serif, Georgia, 'Times New Roman', serif;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:
+    radial-gradient(1100px 600px at 50% -12%, #1D2144 0%, rgba(29,33,68,0) 62%),
+    var(--ink);
+  color:var(--paper);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  display:flex;
+  flex-direction:column;
+  min-height:100%;
+}
+
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--transition);outline-offset:3px;border-radius:4px}
+
+/* ── chrome ─────────────────────────────────────────── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 28px;
+  gap:16px;
+}
+.mark{
+  font-family:var(--serif);
+  font-size:19px;letter-spacing:.14em;
+  color:var(--paper);
+  cursor:pointer;
+}
+.mark span{color:var(--dimmer)}
+
+.status{
+  display:flex;align-items:center;gap:8px;
+  font-size:12.5px;color:var(--dim);
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:none}
+.dot.ready{background:var(--settle)}
+.dot.warm{background:var(--match)}
+.dot.bad{background:var(--danger)}
+@media (prefers-reduced-motion:no-preference){
+  .dot.warm{animation:pulse 1.9s ease-in-out infinite}
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.32}}
+
+main{
+  flex:1;
+  width:100%;
+  max-width:640px;
+  margin:0 auto;
+  padding:8px 24px 72px;
+}
+.screen{display:none}
+.screen.on{display:block}
+
+/* ── compose ────────────────────────────────────────── */
+.lede{
+  font-family:var(--serif);
+  font-weight:300;
+  font-size:clamp(30px,6.4vw,44px);
+  line-height:1.14;
+  letter-spacing:-.012em;
+  margin:52px 0 6px;
+}
+.sub{color:var(--dim);margin:0 0 30px;max-width:46ch}
+
+.composer{
+  background:var(--ink-raised);
+  border:1px solid var(--haze);
+  border-radius:var(--r-lg);
+  padding:6px 6px 6px;
+  transition:border-color .18s ease;
+}
+.composer:focus-within{border-color:#3D437A}
+.composer textarea{
+  width:100%;
+  min-height:96px;
+  resize:none;
+  background:none;border:none;outline:none;
+  color:var(--paper);
+  font:inherit;
+  line-height:1.6;
+  padding:16px 16px 6px;
+}
+.composer textarea::placeholder{color:var(--dimmer)}
+
+.tray{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px 10px;
+  flex-wrap:wrap;
+}
+.chip{
+  padding:5px 11px;
+  border:1px solid var(--haze);
+  border-radius:100px;
+  font-size:12.5px;
+  color:var(--dim);
+  transition:color .15s ease,border-color .15s ease;
+}
+.chip:hover{color:var(--paper);border-color:#3D437A}
+.spacer{flex:1}
+
+.go{
+  display:flex;align-items:center;gap:9px;
+  background:var(--paper);
+  color:var(--ink-sunk);
+  font-weight:600;font-size:14px;
+  padding:9px 17px;
+  border-radius:100px;
+  transition:opacity .15s ease,transform .1s ease;
+}
+.go:hover:not(:disabled){opacity:.88}
+.go:active:not(:disabled){transform:translateY(1px)}
+.go:disabled{opacity:.38;cursor:not-allowed}
+
+.seedrow{
+  display:flex;align-items:center;gap:10px;
+  margin-top:14px;font-size:12.5px;color:var(--dimmer);
+}
+.seedrow input{
+  width:120px;
+  background:var(--ink-sunk);
+  border:1px solid var(--haze-soft);
+  border-radius:var(--r-sm);
+  color:var(--dim);
+  padding:5px 9px;
+  font:inherit;
+  outline:none;
+}
+.seedrow input:focus{border-color:#3D437A}
+
+/* ── the descent rail ───────────────────────────────── */
+.rail{margin:38px 0 0}
+.rail-track{
+  height:5px;border-radius:100px;
+  background:linear-gradient(90deg,
+    var(--match) 0%, var(--match) 22%,
+    var(--transition) 47%, var(--transition) 55%,
+    var(--settle) 80%, var(--settle) 100%);
+}
+.rail-legend{
+  display:flex;justify-content:space-between;
+  margin-top:11px;font-size:12.5px;color:var(--dimmer);
+}
+.rail-legend b{font-weight:500}
+.rail-note{
+  margin:16px 0 0;font-size:13px;color:var(--dimmer);
+  max-width:52ch;line-height:1.6;
+}
+
+/* ── recent ─────────────────────────────────────────── */
+.recent{margin-top:52px}
+.recent h2{
+  font:400 13px var(--sans);color:var(--dimmer);
+  margin:0 0 4px;font-weight:500;
+}
+.rlist{list-style:none;margin:0;padding:0}
+.rlist li{border-bottom:1px solid var(--haze-soft)}
+.rlist button{
+  display:flex;align-items:baseline;gap:14px;
+  width:100%;text-align:left;padding:13px 2px;
+}
+.rlist button:hover .rtitle{color:var(--paper)}
+.rtitle{
+  flex:1;color:var(--dim);font-size:14px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  transition:color .15s ease;
+}
+.rmeta{font-size:12px;color:var(--dimmer);flex:none}
+.rmeta.done{color:var(--settle)}
+.rmeta.error{color:var(--danger)}
+.rmeta.running,.rmeta.queued{color:var(--match)}
+.empty{color:var(--dimmer);font-size:13.5px;padding:13px 0}
+
+/* ── echo of the request ────────────────────────────── */
+.echo{
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:300;
+  font-size:clamp(21px,4.4vw,27px);
+  line-height:1.34;
+  margin:52px 0 30px;
+  color:var(--paper);
+}
+
+/* ── generating ─────────────────────────────────────── */
+.ticks{display:flex;gap:3px;margin-bottom:13px}
+.ticks i{
+  flex:1;height:5px;border-radius:100px;
+  background:var(--haze-soft);
+  transition:background-color .5s ease;
+}
+.phase{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:13px;color:var(--dim);
+}
+.phase .now{color:var(--paper)}
+.elapsed{color:var(--dimmer);font-variant-numeric:tabular-nums}
+
+@media (prefers-reduced-motion:no-preference){
+  .ticks i.active{animation:breathe 2.4s ease-in-out infinite}
+}
+@keyframes breathe{0%,100%{opacity:.45}50%{opacity:1}}
+
+.live{margin-top:38px;display:flex;flex-direction:column;gap:22px}
+.live section{max-width:62ch}
+.live h3{
+  display:flex;align-items:center;gap:11px;
+  margin:0 0 7px;font-size:13.5px;font-weight:500;
+}
+.live h3 u{width:7px;height:7px;border-radius:50%;flex:none;text-decoration:none}
+.live p{margin:0;font-size:13px;line-height:1.68;color:var(--dimmer);padding-left:18px}
+
+.log{
+  margin-top:34px;
+  border-top:1px solid var(--haze-soft);
+  padding-top:18px;
+  display:flex;flex-direction:column;gap:7px;
+  font-size:12.5px;line-height:1.5;
+  color:var(--dimmer);
+}
+.log div{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.log div:last-child{color:var(--dim)}
+
+/* ── session ────────────────────────────────────────── */
+.wavewrap{
+  position:relative;
+  background:var(--ink-sunk);
+  border:1px solid var(--haze-soft);
+  border-radius:var(--r-md);
+  padding:18px 16px;
+  cursor:pointer;
+}
+canvas{display:block;width:100%;height:112px}
+
+.transport{
+  display:flex;align-items:center;gap:16px;
+  margin-top:18px;
+}
+.play{
+  width:46px;height:46px;flex:none;
+  border-radius:50%;
+  background:var(--paper);
+  color:var(--ink-sunk);
+  display:grid;place-items:center;
+  transition:opacity .15s ease;
+}
+.play:hover{opacity:.88}
+.time{
+  font-size:13px;color:var(--dim);
+  font-variant-numeric:tabular-nums;
+  flex:1;
+}
+.time em{color:var(--paper);font-style:normal}
+
+.dl{display:flex;gap:9px;flex-wrap:wrap}
+.dl a{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 15px;
+  border:1px solid var(--haze);
+  border-radius:100px;
+  color:var(--dim);
+  font-size:13px;text-decoration:none;
+  transition:color .15s ease,border-color .15s ease;
+}
+.dl a:hover{color:var(--paper);border-color:#3D437A}
+.dl a.primary{background:var(--haze-soft);color:var(--paper);border-color:transparent}
+
+.prompts{margin-top:44px;border-top:1px solid var(--haze-soft)}
+details{border-bottom:1px solid var(--haze-soft)}
+summary{
+  display:flex;align-items:center;gap:11px;
+  padding:14px 2px;cursor:pointer;list-style:none;
+  font-size:13.5px;color:var(--dim);
+}
+summary::-webkit-details-marker{display:none}
+summary:hover{color:var(--paper)}
+summary u{
+  width:7px;height:7px;border-radius:50%;flex:none;text-decoration:none;
+}
+summary .len{margin-left:auto;font-size:12px;color:var(--dimmer);font-variant-numeric:tabular-nums}
+details p{
+  margin:0 0 18px;padding:0 2px 0 18px;
+  font-size:13px;line-height:1.68;color:var(--dimmer);
+  max-width:62ch;
+}
+
+/* ── error ──────────────────────────────────────────── */
+.fail{
+  border:1px solid rgba(224,118,111,.34);
+  background:rgba(224,118,111,.06);
+  border-radius:var(--r-md);
+  padding:18px 20px;
+  margin-top:8px;
+}
+.fail h3{margin:0 0 7px;font-size:14.5px;font-weight:600;color:var(--danger)}
+.fail p{margin:0;font-size:13px;color:var(--dim);line-height:1.6;word-break:break-word}
+.back{
+  margin-top:26px;font-size:13.5px;color:var(--dim);
+  border-bottom:1px solid var(--haze);padding-bottom:2px;
+}
+.back:hover{color:var(--paper)}
+
+.banner{
+  display:none;
+  margin:0 0 22px;padding:11px 15px;
+  border:1px solid var(--haze);border-radius:var(--r-md);
+  font-size:13px;color:var(--dim);
+}
+.banner.on{display:block}
+
+@media (max-width:520px){
+  header{padding:16px 20px}
+  main{padding:4px 20px 56px}
+  .lede{margin-top:34px}
+  .transport{gap:12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark" id="home" role="button" tabindex="0">VNX <span>functional music</span></div>
+  <div class="status"><i class="dot" id="dot"></i><span id="statusText">Checking</span></div>
+</header>
+
+<main>
+
+<!-- ══ compose ══════════════════════════════════════ -->
+<section class="screen on" id="sCompose">
+  <div class="banner" id="banner"></div>
+
+  <h1 class="lede">What should this session do?</h1>
+  <p class="sub">Describe the state you're in and where you want to end up. Include a length, or pick one below.</p>
+
+  <div class="composer">
+    <textarea id="req" rows="3" placeholder="Wind down after a long shift — restless, need to get to sleep. 20 minutes."></textarea>
+    <div class="tray">
+      <button class="chip" data-min="10">10 min</button>
+      <button class="chip" data-min="20">20 min</button>
+      <button class="chip" data-min="30">30 min</button>
+      <button class="chip" data-min="45">45 min</button>
+      <span class="spacer"></span>
+      <button class="go" id="go">Generate session</button>
+    </div>
+  </div>
+
+  <div class="seedrow">
+    <label for="seed">Seed</label>
+    <input id="seed" type="number" placeholder="random" inputmode="numeric">
+    <span>Reuse a seed to regenerate the same session.</span>
+  </div>
+
+  <div class="rail">
+    <div class="rail-track"></div>
+    <div class="rail-legend">
+      <b style="color:var(--match)">match</b>
+      <b style="color:var(--transition)">transition</b>
+      <b style="color:var(--settle)">settle</b>
+    </div>
+    <p class="rail-note">Every session moves through three phases. It starts where you are, bridges across, and holds at the state you asked for — tempo descending the whole way, with no arrival.</p>
+  </div>
+
+  <div class="recent">
+    <h2>Recent sessions</h2>
+    <ul class="rlist" id="rlist"></ul>
+  </div>
+</section>
+
+<!-- ══ generating ═══════════════════════════════════ -->
+<section class="screen" id="sLoading">
+  <p class="echo" id="echoLoad"></p>
+  <div class="ticks" id="ticks"></div>
+  <div class="phase">
+    <span id="phaseText" class="now">Waiting for the queue</span>
+    <span class="elapsed" id="elapsed">0:00</span>
+  </div>
+  <div class="live" id="live"></div>
+  <div class="log" id="log"></div>
+</section>
+
+<!-- ══ session ══════════════════════════════════════ -->
+<section class="screen" id="sDone">
+  <p class="echo" id="echoDone"></p>
+
+  <div class="wavewrap" id="wavewrap">
+    <canvas id="wave"></canvas>
+  </div>
+
+  <div class="transport">
+    <button class="play" id="play" aria-label="Play">
+      <svg id="playIcon" width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.42 2.1a.6.6 0 0 0-.92.5Z"/></svg>
+    </button>
+    <div class="time"><em id="tNow">0:00</em> / <span id="tAll">0:00</span></div>
+  </div>
+
+  <div class="dl" style="margin-top:22px">
+    <a id="dlMain" class="primary" download>Download 24-bit master</a>
+    <a id="dlRaw" download>Unprocessed render</a>
+  </div>
+
+  <div class="prompts" id="prompts"></div>
+  <button class="back" id="again">Generate another session</button>
+</section>
+
+<!-- ══ error ════════════════════════════════════════ -->
+<section class="screen" id="sError">
+  <p class="echo" id="echoErr"></p>
+  <div class="fail">
+    <h3>Generation stopped</h3>
+    <p id="errText"></p>
+  </div>
+  <div class="log" id="errLog"></div>
+  <button class="back" id="retry">Back to compose</button>
+</section>
+
+</main>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+const PHASE = { match:'--match', transition:'--transition', settle:'--settle' };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const phaseColor = name => css(PHASE[String(name).split('_')[0]] || '--settle');
+
+const mmss = s => {
+  if (!isFinite(s) || s < 0) s = 0;
+  return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+};
+
+let pollTimer = null, tickTimer = null, startedAt = 0, current = null;
+
+/* ── screens ─────────────────────────────────────── */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  window.scrollTo({ top:0, behavior:'instant' });
+}
+
+function toCompose(){
+  clearInterval(pollTimer); clearInterval(tickTimer);
+  stopAudio();
+  show('sCompose');
+  loadRecent();
+}
+
+/* ── health ──────────────────────────────────────── */
+async function health(){
+  try {
+    const h = await (await fetch('/health')).json();
+    if (h.error) {
+      $('dot').className = 'dot bad';
+      $('statusText').textContent = 'Models failed to load';
+      $('banner').className = 'banner on';
+      $('banner').textContent = 'The models did not load, so nothing can be generated. Check the server console for the traceback.';
+      $('go').disabled = true;
+    } else if (h.models_loaded) {
+      $('dot').className = 'dot ready';
+      $('statusText').textContent = h.queued ? `${h.queued} in queue` : (h.running ? 'Generating' : 'Ready');
+      $('banner').className = 'banner';
+      $('go').disabled = false;
+    } else {
+      $('dot').className = 'dot warm';
+      $('statusText').textContent = 'Loading models';
+      $('banner').className = 'banner on';
+      $('banner').textContent = 'Models are still loading — this takes a few minutes on first run. You can submit now and it will start automatically.';
+      $('go').disabled = false;
+    }
+  } catch {
+    $('dot').className = 'dot bad';
+    $('statusText').textContent = 'Server unreachable';
+  }
+}
+
+/* ── recent ──────────────────────────────────────── */
+async function loadRecent(){
+  try {
+    const jobs = await (await fetch('/jobs')).json();
+    const ul = $('rlist');
+    if (!jobs.length) {
+      ul.innerHTML = '<li class="empty">Nothing generated yet.</li>';
+      return;
+    }
+    ul.innerHTML = '';
+    jobs.slice(0, 8).forEach(j => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      const t = document.createElement('span');
+      const m = document.createElement('span');
+      t.className = 'rtitle'; t.textContent = j.request;
+      m.className = 'rmeta ' + j.status;
+      m.textContent = j.status === 'done' && j.result
+        ? mmss(j.result.duration_s) : j.status;
+      b.append(t, m);
+      b.onclick = () => open(j.id);
+      li.append(b); ul.append(li);
+    });
+  } catch {
+    $('rlist').innerHTML = '<li class="empty">Could not reach the server.</li>';
+  }
+}
+
+/* ── submit ──────────────────────────────────────── */
+async function submit(){
+  const text = $('req').value.trim();
+  if (!text) { $('req').focus(); return; }
+  const seedRaw = $('seed').value.trim();
+
+  $('go').disabled = true;
+  try {
+    const r = await fetch('/generate', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ request:text, seed: seedRaw === '' ? null : Number(seedRaw) }),
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      throw new Error(body.detail || `Server returned ${r.status}`);
+    }
+    const { job_id } = await r.json();
+    try { localStorage.setItem('vnx:last', job_id); } catch {}
+    open(job_id);
+  } catch (e) {
+    fail(text, e.message, []);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+/* ── poll ────────────────────────────────────────── */
+function open(id){
+  clearInterval(pollTimer); clearInterval(tickTimer);
+  poll(id);
+  pollTimer = setInterval(() => poll(id), 1500);
+}
+
+async function poll(id){
+  let job;
+  try {
+    const r = await fetch('/jobs/' + id);
+    if (!r.ok) throw new Error('Job ' + id + ' is not on the server anymore.');
+    job = await r.json();
+  } catch (e) {
+    clearInterval(pollTimer);
+    return fail('', e.message, []);
+  }
+  current = job;
+
+  if (job.status === 'done' && job.result) {
+    clearInterval(pollTimer); clearInterval(tickTimer);
+    return done(job);
+  }
+  if (job.status === 'error') {
+    clearInterval(pollTimer); clearInterval(tickTimer);
+    return fail(job.request, job.error, job.log);
+  }
+  loading(job);
+}
+
+/* ── generating screen ───────────────────────────── */
+function loading(job){
+  if ($('sLoading').classList.contains('on') === false) {
+    show('sLoading');
+    startedAt = Date.parse(job.started_at || job.created_at) || Date.now();
+    clearInterval(tickTimer);
+    tickTimer = setInterval(() => {
+      $('elapsed').textContent = mmss((Date.now() - startedAt) / 1000);
+    }, 1000);
+  }
+  $('echoLoad').textContent = '“' + job.request + '”';
+
+  const p = job.progress;
+  const total = p ? p.total : 3;
+  const ticks = $('ticks');
+  if (ticks.children.length !== total) {
+    ticks.innerHTML = '';
+    for (let i = 0; i < total; i++) ticks.append(document.createElement('i'));
+  }
+  [...ticks.children].forEach((el, i) => {
+    el.classList.remove('active');
+    if (!p) { el.style.background = ''; return; }
+    if (i < p.segment - 1) {
+      el.style.background = phaseColor(nameAt(job, i));
+    } else if (i === p.segment - 1) {
+      el.style.background = phaseColor(p.name);
+      el.classList.add('active');
+    } else {
+      el.style.background = '';
+    }
+  });
+
+  $('phaseText').textContent = job.status === 'queued'
+    ? 'Queued — waiting for the GPU'
+    : p ? `Rendering ${p.name.replace('_',' ')} — segment ${p.segment} of ${p.total}`
+        : 'Writing the three phase prompts';
+
+  // the orchestrator's three prompts arrive in the log as "[match] ..." lines —
+  // pull them out and give them room, they're the only thing worth reading
+  // during a render that takes minutes
+  const written = new Map(), plain = [];
+  (job.log || []).forEach(line => {
+    const m = /^\[(match|transition|settle)\]\s+([\s\S]+)$/.exec(line);
+    if (m) written.set(m[1], m[2]); else plain.push(line);
+  });
+
+  const live = $('live');
+  if (live.childElementCount !== written.size) {
+    live.innerHTML = '';
+    written.forEach((text, name) => {
+      const s = document.createElement('section');
+      s.innerHTML = `<h3><u style="background:${phaseColor(name)}"></u>${name}</h3>`;
+      const p = document.createElement('p');
+      p.textContent = text;
+      s.append(p); live.append(s);
+    });
+  }
+
+  $('log').innerHTML = '';
+  plain.slice(-5).forEach(l => {
+    const d = document.createElement('div'); d.textContent = l; $('log').append(d);
+  });
+}
+
+function nameAt(job, i){
+  const p = job.progress;
+  if (p && i === p.segment - 1) return p.name;
+  return i === 0 ? 'match' : i === 1 ? 'transition' : 'settle';
+}
+
+/* ── session screen ──────────────────────────────── */
+let peaks = [], bounds = [];
+
+function done(job){
+  const r = job.result;
+  show('sDone');
+  $('echoDone').textContent = '“' + job.request + '”';
+
+  peaks = r.peaks || [];
+  const total = r.segments.reduce((a, s) => a + s.duration_s, 0) || 1;
+  let acc = 0;
+  bounds = r.segments.map(s => { acc += s.duration_s; return { end: acc/total, color: phaseColor(s.name) }; });
+  drawWave(0);
+
+  const a = $('audio');
+  a.src = r.audio_url;
+  a.onloadedmetadata = () => { $('tAll').textContent = mmss(a.duration || r.duration_s); };
+  $('tAll').textContent = mmss(r.duration_s);
+  a.ontimeupdate = () => {
+    $('tNow').textContent = mmss(a.currentTime);
+    drawWave(a.duration ? a.currentTime / a.duration : 0);
+  };
+  a.onended = () => setPlayIcon(false);
+
+  $('dlMain').href = r.download_url;
+  $('dlRaw').href  = r.raw_url;
+
+  const box = $('prompts');
+  box.innerHTML = '';
+  ['match','transition','settle'].forEach(k => {
+    const seg = r.segments.filter(s => s.name.split('_')[0] === k);
+    const secs = seg.reduce((x, s) => x + s.duration_s, 0);
+    const d = document.createElement('details');
+    d.innerHTML = `<summary><u style="background:${phaseColor(k)}"></u>${k}<span class="len">${mmss(secs)}</span></summary>`;
+    const p = document.createElement('p');
+    p.textContent = r.prompts[k] || '';
+    d.append(p); box.append(d);
+  });
+}
+
+function drawWave(progress){
+  const c = $('wave'), ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (!peaks.length) return;
+
+  const bar = 2.5, gap = 1.4, step = bar + gap;
+  const n = Math.floor(w / step);
+  const mid = h / 2;
+
+  for (let i = 0; i < n; i++) {
+    const frac = i / n;
+    const v = peaks[Math.floor(frac * peaks.length)] || 0;
+    const bh = Math.max(2, v * (h - 6));
+    const seg = bounds.find(b => frac <= b.end) || bounds[bounds.length - 1];
+    ctx.fillStyle = seg ? seg.color : css('--dim');
+    ctx.globalAlpha = frac <= progress ? 1 : 0.26;
+    ctx.beginPath();
+    ctx.roundRect(i * step, mid - bh/2, bar, bh, bar/2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function setPlayIcon(playing){
+  $('playIcon').innerHTML = playing
+    ? '<rect x="4" y="2.6" width="3" height="10.8" rx="1"/><rect x="9" y="2.6" width="3" height="10.8" rx="1"/>'
+    : '<path d="M4.5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.42 2.1a.6.6 0 0 0-.92.5Z"/>';
+  $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+}
+
+function stopAudio(){ const a = $('audio'); a.pause(); a.removeAttribute('src'); setPlayIcon(false); }
+
+/* ── error screen ────────────────────────────────── */
+function fail(request, message, log){
+  show('sError');
+  $('echoErr').textContent = request ? '“' + request + '”' : '';
+  $('errText').textContent = message || 'The server did not say why.';
+  $('errLog').innerHTML = '';
+  (log || []).slice(-6).forEach(l => {
+    const d = document.createElement('div'); d.textContent = l; $('errLog').append(d);
+  });
+}
+
+/* ── wiring ──────────────────────────────────────── */
+$('go').onclick = submit;
+$('req').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+});
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.onclick = () => {
+    const t = $('req');
+    const m = chip.dataset.min;
+    t.value = t.value.replace(/,?\s*\d+\s*min(?:ute)?s?\.?\s*$/i, '').trim();
+    t.value = (t.value ? t.value.replace(/[.,]$/, '') + ', ' : '') + m + ' minutes.';
+    t.focus();
+  };
+});
+
+$('play').onclick = () => {
+  const a = $('audio');
+  if (a.paused) { a.play(); setPlayIcon(true); } else { a.pause(); setPlayIcon(false); }
+};
+
+$('wavewrap').onclick = e => {
+  const a = $('audio');
+  if (!a.duration) return;
+  const r = $('wave').getBoundingClientRect();
+  a.currentTime = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * a.duration;
+};
+
+$('again').onclick = toCompose;
+$('retry').onclick = toCompose;
+$('home').onclick = toCompose;
+$('home').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toCompose(); } };
+
+window.addEventListener('resize', () => {
+  if ($('sDone').classList.contains('on')) {
+    const a = $('audio');
+    drawWave(a.duration ? a.currentTime / a.duration : 0);
+  }
+});
+
+health();
+setInterval(health, 8000);
+loadRecent();
+
+/* resume the last job if it was still running when the tab was closed */
+(async () => {
+  let last = null;
+  try { last = localStorage.getItem('vnx:last'); } catch {}
+  if (!last) return;
+  try {
+    const j = await (await fetch('/jobs/' + last)).json();
+    if (j.status === 'queued' || j.status === 'running') open(last);
+  } catch {}
+})();
+</script>
+</body>
+</html>

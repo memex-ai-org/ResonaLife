@@ -1,0 +1,25 @@
+# torch/torchvision/torchaudio are a matched set compiled against one ABI —
+# install all three together, from the cu126 index, before anything else:
+#   pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu126
+#
+# flash-attn is required (SA3 medium's SAME-L autoencoder uses sliding-window
+# attention; the SDPA fallback outputs noise). Building from source takes
+# 1-2 hours — use a prebuilt wheel matching cu126 / torch2.7 / your Python:
+#   Windows: https://github.com/kingbri1/flash-attention/releases
+#   Linux:   https://github.com/mjun0812/flash-attention-prebuild-wheels/releases
+#
+# stable-audio-3 is installed from Stability's repo, not PyPI:
+#   pip install -e path/to/stable-audio-3-main
+
+transformers>=4.46.0
+accelerate
+huggingface_hub
+
+numpy
+scipy
+soundfile
+pyloudnorm
+
+fastapi
+uvicorn[standard]
+pydantic>=2

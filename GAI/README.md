@@ -44,30 +44,6 @@ First start downloads ~9 GB and takes a few minutes; the page shows
 `loading models` until both are resident. After that, open
 `http://localhost:8000`.
 
-## Remote access for Yihao
-
-Install Tailscale on both machines, then he opens
-`http://<your-tailscale-name>:8000`. No port forwarding, nothing exposed to
-the public internet. Also turn off sleep and fast startup on the workstation
-or it drops off the tailnet mid-session:
-
-```powershell
-powercfg /change standby-timeout-ac 0
-powercfg /h off
-```
-
-## Changes from the notebook
-
-- **Qwen is AWQ int4, not bf16.** ~5.5 GB instead of ~15 GB, which is what
-  lets Qwen and SA3 both stay resident on the 4080. The notebook freed Qwen
-  before loading SA3; here neither unloads.
-- **`render_session` → `build_session`.** The notebook called a function that
-  was never defined.
-- **`SESSION_REQUEST` unterminated string** in the repeat cell — gone with the
-  cell; the request now comes from the form.
-- **Gating check removed.** It downloaded `model_config.json` on every run to
-  fail fast; a resident service checks once by just loading the model.
-- Drive paths → `VNX_ROOT`, `userdata.get` → env var, `!pip` → requirements.
 
 ## Notes
 

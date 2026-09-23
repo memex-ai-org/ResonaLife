@@ -8,9 +8,9 @@ import os
 from pathlib import Path
 
 # ---------- paths ----------
-# Override with VNX_ROOT if you want weights/sessions somewhere other than
+# Override with RESONALIFE_ROOT if you want weights/sessions somewhere other than
 # alongside the code (e.g. a second drive with more space — weights are ~9 GB).
-ROOT = Path(os.environ.get('VNX_ROOT', Path(__file__).parent / 'data'))
+ROOT = Path(os.environ.get('RESONALIFE_ROOT', Path(__file__).parent / 'data'))
 HF_HOME = ROOT / 'hf_cache'
 WORK = ROOT / 'sessions'
 
@@ -45,6 +45,32 @@ CTX_S = 30.0                  # seconds of the previous phase used as conditioni
 
 DEFAULT_TOTAL_S = 15 * 60     # fallback if no duration is mentioned in the request
 SPLIT = (0.25, 0.35, 0.40)    # match, transition, settle
+
+# ---------- pain relief mode ----------
+# Functional Music Guideline — Hospice & Chronic Illness, Module 1 (Pain Relief).
+# Unlike match/transition/settle this arc never opens with energy to "meet" the
+# listener: it starts calm and only ever gets calmer. Shares are the guideline's
+# session arc table; every phase is chunked across as many model calls as it
+# needs, so the shares hold at any length. The names are also the prompt keys,
+# the segment file names and the phase ids the page colours by.
+PAIN_ARC = (
+    ('immediate_calm',     0.10),   # enters softly at the slow tempo, no build-up
+    ('release_tension',    0.15),   # harmony settles further, phrases lengthen
+    ('comfort_and_safety', 0.20),   # stable, repeating, the most "held" part
+    ('deepen_relaxation',  0.20),   # fewer notes, more space, darker and softer
+    ('weightless_plateau', 0.25),   # pads and sustained tones float
+    ('fade_or_loop',       0.10),   # fade to silence, or continue and loop
+)
+assert abs(sum(share for _, share in PAIN_ARC) - 1.0) < 1e-9, 'PAIN_ARC shares must add up to 1'
+
+# guideline "Tailoring a session" safe ranges — requests outside them are pulled back in
+PAIN_MINUTES = (10, 60)
+PAIN_DEFAULT_MINUTES = 30
+PAIN_BPM = (50, 65)
+PAIN_DEFAULT_BPM = 58
+
+PAIN_LOOP_CROSSFADE_S = 8.0   # loop ending: tail folded into the start so the file repeats with no click or gap
+PAIN_LOOP_CHECK_S = 10.0      # loop ending: seconds either side of the join in loop_check.mp3
 
 # ---------- post EQ ----------
 POST_EQ = dict(

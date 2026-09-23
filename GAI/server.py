@@ -3,6 +3,12 @@
 One GPU means one generation at a time, so requests go into a queue and a
 single background thread drains it. POST /generate returns immediately with a
 job id; the browser polls GET /jobs/{id} until it's done.
+
+POST /generate {"request": "...", "seed": null}                       ISO session
+POST /generate {"request": "...", "mode": "pain_relief", "options": {...}}
+    options: minutes 10-60, bpm 50-65, ending fade|loop, lead piano|strings|pads,
+    melody sparse|none, warm_piano bool, nature off|wind|waves, fixes [...]
+    (see pipeline.pain_relief_settings; anything missing takes the guideline default)
 """
 import queue
 import threading
@@ -10,6 +16,7 @@ import traceback
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +27,7 @@ from pydantic import BaseModel
 import config
 import pipeline
 
-app = FastAPI(title='VNX Functional Music GAI')
+app = FastAPI(title='ResonaLife Functional Music GAI')
 
 # Only needed if the page is served from somewhere other than this app —
 # a Vite dev server, file://, another port. Harmless otherwise.
@@ -41,6 +48,30 @@ MODEL_ERROR = None             # traceback string if loading failed
 class GenerateRequest(BaseModel):
     request: str
     seed: int | None = None
+    mode: Literal['iso', 'pain_relief'] = 'iso'
+    options: dict | None = None    # pain relief settings; validated by the pipeline
+
+
+def result_for_page(result):
+    """The pipeline's result with file paths turned into URLs the page can fetch."""
+    folder = Path(result['eq_path']).parent.name
+    loop_check = result.get('loop_check_path')
+    return {
+        'mode': result['mode'],
+        'ending': result.get('ending'),
+        'settings': result.get('settings'),
+        'duration_s': result['duration_s'],
+        'prompts': result['prompts'],
+        'segments': result['segments'],
+        'peaks': result['peaks'],
+        # small file for the browser to stream
+        'audio_url': f'/audio/{folder}/{Path(result["preview_path"]).name}',
+        # full-quality 24-bit deliverable
+        'download_url': f'/audio/{folder}/completed_EQed.wav',
+        'raw_url': f'/audio/{folder}/completed.wav',
+        # pain relief loop ending: the last and first seconds back to back
+        'loop_check_url': f'/audio/{folder}/{Path(loop_check).name}' if loop_check else None,
+    }
 
 
 def worker():
@@ -74,22 +105,15 @@ def worker():
         def on_segment(i, total, name, _job=job):
             _job['progress'] = {'segment': i + 1, 'total': total, 'name': name}
 
+        def on_plan(names, _job=job):
+            _job['plan'] = names          # every segment name, so the page can colour the arc
+
         try:
             result = pipeline.generate_session(
                 job['request'], seed=job['seed'], log=log, on_segment=on_segment,
+                mode=job['mode'], options=job['options'], on_plan=on_plan,
             )
-            folder = Path(result['eq_path']).parent.name
-            job['result'] = {
-                'duration_s': result['duration_s'],
-                'prompts': result['prompts'],
-                'segments': result['segments'],
-                'peaks': result['peaks'],
-                # small file for the browser to stream
-                'audio_url': f'/audio/{folder}/{Path(result["preview_path"]).name}',
-                # full-quality 24-bit deliverable
-                'download_url': f'/audio/{folder}/completed_EQed.wav',
-                'raw_url': f'/audio/{folder}/completed.wav',
-            }
+            job['result'] = result_for_page(result)
             job['status'] = 'done'
         except Exception as e:
             job['status'] = 'error'
@@ -129,9 +153,12 @@ def generate(req: GenerateRequest):
         'id': job_id,
         'request': req.request.strip(),
         'seed': req.seed,
+        'mode': req.mode,
+        'options': req.options if req.mode == 'pain_relief' else None,
         'status': 'queued',
         'log': [],
         'progress': None,
+        'plan': None,
         'result': None,
         'error': None,
         'created_at': datetime.now().isoformat(timespec='seconds'),
@@ -161,6 +188,7 @@ def list_jobs():
         {
             'id': j['id'],
             'request': j['request'],
+            'mode': j.get('mode', 'iso'),
             'status': j['status'],
             'created_at': j['created_at'],
             'result': {'duration_s': j['result']['duration_s']} if j['result'] else None,

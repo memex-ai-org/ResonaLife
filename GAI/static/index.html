@@ -2,482 +2,1177 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VNX — functional music sessions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#211A18">
+<title>ResonaLife</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Young+Serif&display=swap" rel="stylesheet">
 <style>
 :root{
-  /* ground */
-  --ink:        #12142A;
-  --ink-raised: #1A1D36;
-  --ink-sunk:   #0E1023;
-  --haze:       #2B2F52;
-  --haze-soft:  #21243F;
+  /* ground: dark fired clay under lamplight */
+  --night:    #211A18;
+  --glaze:    #2C2320;
+  --glaze-2:  #372C28;
+  --line:     #4B3D37;
 
   /* text */
-  --paper:  #E9E7F3;
-  --dim:    #8C92B8;
-  --dimmer: #626890;
+  --porcelain:#F4ECE3;
+  --stone:    #C2B3A7;
+  --stone-2:  #948378;
 
-  /* the descent: warm current state -> cool target state */
-  --match:      #E3A76F;
-  --transition: #9E8CD6;
-  --settle:     #5FB9B0;
+  /* the one action colour */
+  --honey:    #EBC287;
+  --on-honey: #2B1D10;
 
-  --danger: #E0766F;
+  /* the session arc: where you are -> where you're going */
+  --ember:    #EDA47A;   /* meets you */
+  --rose:     #D4A8C4;   /* eases you */
+  --sage:     #A7CBB0;   /* settles you */
 
-  --r-sm: 6px;
-  --r-md: 12px;
-  --r-lg: 18px;
+  /* the pain relief arc: starts calm, only ever gets calmer (warm -> cool).
+     Adjacent pairs checked for colour-blind separation (worst ΔE 14.5) */
+  --p-calm:    #F9B094;  /* immediate calm */
+  --p-release: #CA81A4;  /* release tension */
+  --p-comfort: #D3BBF2;  /* comfort and safety */
+  --p-deepen:  #728CD3;  /* deepen relaxation */
+  --p-float:   #8CD7D2;  /* weightless plateau */
+  --p-fade:    #608A9D;  /* fade or loop */
 
-  --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --serif: 'Newsreader', ui-serif, Georgia, 'Times New Roman', serif;
+  --danger:   #F08F7F;
+
+  --serif: 'Young Serif', ui-serif, Georgia, 'Times New Roman', serif;
+  --sans:  'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 *{box-sizing:border-box}
-html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
 body{
   margin:0;
-  background:
-    radial-gradient(1100px 600px at 50% -12%, #1D2144 0%, rgba(29,33,68,0) 62%),
-    var(--ink);
-  color:var(--paper);
+  background:var(--night);
+  color:var(--porcelain);
   font-family:var(--sans);
-  font-size:15px;
+  font-size:16px;
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
-  display:flex;
-  flex-direction:column;
-  min-height:100%;
+  min-height:100vh;
 }
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+input,textarea{font:inherit;color:var(--porcelain)}
+:focus-visible{outline:2px solid var(--honey);outline-offset:3px}
+[hidden]{display:none !important}
 
-button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
-:focus-visible{outline:2px solid var(--transition);outline-offset:3px;border-radius:4px}
-
-/* ── chrome ─────────────────────────────────────────── */
+/* ── header ─────────────────────────────────────── */
 header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:20px 28px;
-  gap:16px;
+  max-width:640px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:22px 24px 0;
 }
-.mark{
-  font-family:var(--serif);
-  font-size:19px;letter-spacing:.14em;
-  color:var(--paper);
-  cursor:pointer;
-}
-.mark span{color:var(--dimmer)}
-
-.status{
-  display:flex;align-items:center;gap:8px;
-  font-size:12.5px;color:var(--dim);
-}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:none}
-.dot.ready{background:var(--settle)}
-.dot.warm{background:var(--match)}
+.mark{font-family:var(--serif);font-size:22px;letter-spacing:.01em;border-radius:6px}
+.status{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--stone)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--stone-2);flex:none}
+.dot.ready{background:var(--sage)}
+.dot.busy{background:var(--ember)}
 .dot.bad{background:var(--danger)}
-@media (prefers-reduced-motion:no-preference){
-  .dot.warm{animation:pulse 1.9s ease-in-out infinite}
-}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.32}}
 
-main{
-  flex:1;
-  width:100%;
-  max-width:640px;
-  margin:0 auto;
-  padding:8px 24px 72px;
-}
+main{max-width:640px;margin:0 auto;padding:0 24px 40px}
 .screen{display:none}
 .screen.on{display:block}
 
-/* ── compose ────────────────────────────────────────── */
-.lede{
-  font-family:var(--serif);
-  font-weight:300;
-  font-size:clamp(30px,6.4vw,44px);
-  line-height:1.14;
-  letter-spacing:-.012em;
-  margin:52px 0 6px;
+h1{
+  font-family:var(--serif);font-weight:400;
+  font-size:clamp(34px,8vw,46px);line-height:1.08;letter-spacing:-.01em;
+  margin:44px 0 12px;
 }
-.sub{color:var(--dim);margin:0 0 30px;max-width:46ch}
+.lede{color:var(--stone);margin:0 0 26px;max-width:44ch;font-size:17px}
 
-.composer{
-  background:var(--ink-raised);
-  border:1px solid var(--haze);
-  border-radius:var(--r-lg);
-  padding:6px 6px 6px;
-  transition:border-color .18s ease;
+/* ── mode switch ────────────────────────────────── */
+.modes{
+  display:inline-flex;gap:4px;padding:4px;margin:0 0 34px;
+  background:var(--glaze);border-radius:100px;
 }
-.composer:focus-within{border-color:#3D437A}
-.composer textarea{
-  width:100%;
-  min-height:96px;
-  resize:none;
-  background:none;border:none;outline:none;
-  color:var(--paper);
-  font:inherit;
-  line-height:1.6;
-  padding:16px 16px 6px;
+.mode{
+  padding:9px 18px;border-radius:100px;
+  color:var(--stone);font-size:15px;font-weight:500;
+  transition:background-color .15s ease,color .15s ease;
 }
-.composer textarea::placeholder{color:var(--dimmer)}
+.mode:hover{color:var(--porcelain)}
+.mode[aria-pressed="true"]{background:var(--glaze-2);color:var(--porcelain);box-shadow:inset 0 0 0 1.5px var(--line)}
+.mode .short{display:none}
 
-.tray{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 10px 10px;
-  flex-wrap:wrap;
+/* ── guided ─────────────────────────────────────── */
+.q{margin:0 0 34px}
+.q h2{font-size:17px;font-weight:600;margin:0 0 14px}
+.q h2 small,.sublabel small{font-weight:400;color:var(--stone-2);font-size:15px;margin-left:6px}
+
+.goals{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.goal{
+  text-align:left;
+  padding:16px 16px 15px;
+  border-radius:16px;
+  background:var(--glaze);
+  border:1.5px solid transparent;
+  display:flex;flex-direction:column;gap:3px;
+  transition:border-color .15s ease,background-color .15s ease;
 }
+.goal b{font-weight:600;font-size:16px}
+.goal span{color:var(--stone);font-size:14px;line-height:1.35}
+.goal:hover{background:var(--glaze-2)}
+.goal[aria-pressed="true"]{border-color:var(--honey);background:var(--glaze-2)}
+.goal.own{background:none;border:1.5px dashed var(--line)}
+.goal.own:hover{border-color:var(--stone-2)}
+.goal.own[aria-pressed="true"]{border:1.5px solid var(--honey);background:var(--glaze-2)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{
-  padding:5px 11px;
-  border:1px solid var(--haze);
+  padding:9px 16px;
   border-radius:100px;
-  font-size:12.5px;
-  color:var(--dim);
-  transition:color .15s ease,border-color .15s ease;
+  border:1.5px solid var(--line);
+  color:var(--stone);
+  font-size:15px;
+  transition:color .15s ease,border-color .15s ease,background-color .15s ease;
 }
-.chip:hover{color:var(--paper);border-color:#3D437A}
-.spacer{flex:1}
+.chip:hover{color:var(--porcelain)}
+.chip[aria-pressed="true"]{border-color:var(--honey);color:var(--porcelain);background:var(--glaze-2)}
+.chip.own{border-style:dashed}
+.chip.own[aria-pressed="true"]{border-style:solid}
+.lengths .chip{min-width:62px;text-align:center;font-variant-numeric:tabular-nums}
+.sublabel{font-size:14px;color:var(--stone-2);margin:0 0 10px}
+.sublabel.later{margin-top:22px}
 
-.go{
-  display:flex;align-items:center;gap:9px;
-  background:var(--paper);
-  color:var(--ink-sunk);
-  font-weight:600;font-size:14px;
-  padding:9px 17px;
-  border-radius:100px;
-  transition:opacity .15s ease,transform .1s ease;
+.field{
+  width:100%;margin-top:10px;
+  background:var(--glaze);border:1.5px solid var(--line);border-radius:12px;
+  padding:11px 14px;outline:none;
 }
-.go:hover:not(:disabled){opacity:.88}
-.go:active:not(:disabled){transform:translateY(1px)}
-.go:disabled{opacity:.38;cursor:not-allowed}
+.field::placeholder{color:var(--stone-2)}
+.field:focus{border-color:var(--honey)}
+.minrow{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--stone)}
+.minrow .field{width:96px;margin:0;font-variant-numeric:tabular-nums}
+.minrow .warn{color:var(--danger);font-size:14px}
 
-.seedrow{
-  display:flex;align-items:center;gap:10px;
-  margin-top:14px;font-size:12.5px;color:var(--dimmer);
+textarea.notes{
+  width:100%;min-height:92px;resize:vertical;
+  background:var(--glaze);
+  border:1.5px solid transparent;border-radius:14px;
+  line-height:1.5;padding:14px 16px;outline:none;
 }
-.seedrow input{
-  width:120px;
-  background:var(--ink-sunk);
-  border:1px solid var(--haze-soft);
-  border-radius:var(--r-sm);
-  color:var(--dim);
-  padding:5px 9px;
-  font:inherit;
-  outline:none;
-}
-.seedrow input:focus{border-color:#3D437A}
+textarea.notes::placeholder{color:var(--stone-2)}
+textarea.notes:focus{border-color:var(--line)}
 
-/* ── the descent rail ───────────────────────────────── */
-.rail{margin:38px 0 0}
-.rail-track{
-  height:5px;border-radius:100px;
-  background:linear-gradient(90deg,
-    var(--match) 0%, var(--match) 22%,
-    var(--transition) 47%, var(--transition) 55%,
-    var(--settle) 80%, var(--settle) 100%);
+/* sticky create bar: the choice summary + the one action */
+.dock{
+  position:sticky;bottom:0;z-index:5;
+  margin:0 -24px;
+  padding:40px 24px calc(18px + env(safe-area-inset-bottom));
+  background:linear-gradient(to bottom, rgba(33,26,24,0) 0, var(--night) 40px);
 }
-.rail-legend{
-  display:flex;justify-content:space-between;
-  margin-top:11px;font-size:12.5px;color:var(--dimmer);
+.summary{font-size:15px;color:var(--stone);margin:0 0 12px;min-height:1.55em}
+.summary em{font-style:normal;color:var(--porcelain)}
+.create{
+  width:100%;height:56px;border-radius:100px;
+  background:var(--honey);color:var(--on-honey);
+  font-weight:600;font-size:17px;
+  transition:filter .15s ease,transform .1s ease,opacity .15s ease;
 }
-.rail-legend b{font-weight:500}
-.rail-note{
-  margin:16px 0 0;font-size:13px;color:var(--dimmer);
-  max-width:52ch;line-height:1.6;
-}
+.create:hover:not(:disabled){filter:brightness(1.05)}
+.create:active:not(:disabled){transform:translateY(1px)}
+.create:disabled{opacity:.4;cursor:not-allowed}
 
-/* ── recent ─────────────────────────────────────────── */
-.recent{margin-top:52px}
-.recent h2{
-  font:400 13px var(--sans);color:var(--dimmer);
-  margin:0 0 4px;font-weight:500;
+/* ── write your own ─────────────────────────────── */
+.composer{
+  display:flex;align-items:flex-end;gap:10px;
+  background:var(--glaze);
+  border:1.5px solid var(--line);border-radius:24px;
+  padding:12px 12px 12px 20px;
+  transition:border-color .15s ease;
 }
-.rlist{list-style:none;margin:0;padding:0}
-.rlist li{border-bottom:1px solid var(--haze-soft)}
-.rlist button{
-  display:flex;align-items:baseline;gap:14px;
-  width:100%;text-align:left;padding:13px 2px;
+.composer:focus-within{border-color:var(--stone-2)}
+.composer textarea{
+  flex:1;min-height:84px;max-height:300px;resize:none;
+  background:none;border:none;outline:none;
+  line-height:1.55;padding:6px 0;
 }
-.rlist button:hover .rtitle{color:var(--paper)}
-.rtitle{
-  flex:1;color:var(--dim);font-size:14px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  transition:color .15s ease;
-}
-.rmeta{font-size:12px;color:var(--dimmer);flex:none}
-.rmeta.done{color:var(--settle)}
-.rmeta.error{color:var(--danger)}
-.rmeta.running,.rmeta.queued{color:var(--match)}
-.empty{color:var(--dimmer);font-size:13.5px;padding:13px 0}
-
-/* ── echo of the request ────────────────────────────── */
-.echo{
-  font-family:var(--serif);
-  font-style:italic;
-  font-weight:300;
-  font-size:clamp(21px,4.4vw,27px);
-  line-height:1.34;
-  margin:52px 0 30px;
-  color:var(--paper);
-}
-
-/* ── generating ─────────────────────────────────────── */
-.ticks{display:flex;gap:3px;margin-bottom:13px}
-.ticks i{
-  flex:1;height:5px;border-radius:100px;
-  background:var(--haze-soft);
-  transition:background-color .5s ease;
-}
-.phase{
-  display:flex;justify-content:space-between;align-items:baseline;
-  font-size:13px;color:var(--dim);
-}
-.phase .now{color:var(--paper)}
-.elapsed{color:var(--dimmer);font-variant-numeric:tabular-nums}
-
-@media (prefers-reduced-motion:no-preference){
-  .ticks i.active{animation:breathe 2.4s ease-in-out infinite}
-}
-@keyframes breathe{0%,100%{opacity:.45}50%{opacity:1}}
-
-.live{margin-top:38px;display:flex;flex-direction:column;gap:22px}
-.live section{max-width:62ch}
-.live h3{
-  display:flex;align-items:center;gap:11px;
-  margin:0 0 7px;font-size:13.5px;font-weight:500;
-}
-.live h3 u{width:7px;height:7px;border-radius:50%;flex:none;text-decoration:none}
-.live p{margin:0;font-size:13px;line-height:1.68;color:var(--dimmer);padding-left:18px}
-
-.log{
-  margin-top:34px;
-  border-top:1px solid var(--haze-soft);
-  padding-top:18px;
-  display:flex;flex-direction:column;gap:7px;
-  font-size:12.5px;line-height:1.5;
-  color:var(--dimmer);
-}
-.log div{
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-.log div:last-child{color:var(--dim)}
-
-/* ── session ────────────────────────────────────────── */
-.wavewrap{
-  position:relative;
-  background:var(--ink-sunk);
-  border:1px solid var(--haze-soft);
-  border-radius:var(--r-md);
-  padding:18px 16px;
-  cursor:pointer;
-}
-canvas{display:block;width:100%;height:112px}
-
-.transport{
-  display:flex;align-items:center;gap:16px;
-  margin-top:18px;
-}
-.play{
-  width:46px;height:46px;flex:none;
-  border-radius:50%;
-  background:var(--paper);
-  color:var(--ink-sunk);
+.composer textarea::placeholder{color:var(--stone-2)}
+.send{
+  width:46px;height:46px;flex:none;border-radius:50%;
+  background:var(--honey);color:var(--on-honey);
   display:grid;place-items:center;
-  transition:opacity .15s ease;
+  transition:opacity .15s ease,filter .15s ease;
 }
-.play:hover{opacity:.88}
-.time{
-  font-size:13px;color:var(--dim);
-  font-variant-numeric:tabular-nums;
-  flex:1;
-}
-.time em{color:var(--paper);font-style:normal}
+.send:hover:not(:disabled){filter:brightness(1.05)}
+.send:disabled{opacity:.35;cursor:not-allowed}
+.hint{font-size:14px;color:var(--stone-2);margin:10px 4px 0;min-height:1.55em}
+.hint b{font-weight:500;color:var(--stone)}
+.hint.warn{color:var(--danger)}
 
-.dl{display:flex;gap:9px;flex-wrap:wrap}
-.dl a{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:8px 15px;
-  border:1px solid var(--haze);
-  border-radius:100px;
-  color:var(--dim);
-  font-size:13px;text-decoration:none;
-  transition:color .15s ease,border-color .15s ease;
+/* ── pain relief ────────────────────────────────── */
+.notice{
+  margin:0 0 34px;padding:14px 16px;border-radius:14px;
+  background:var(--glaze);color:var(--stone);font-size:14px;line-height:1.55;
 }
-.dl a:hover{color:var(--paper);border-color:#3D437A}
-.dl a.primary{background:var(--haze-soft);color:var(--paper);border-color:transparent}
+.notice b{color:var(--porcelain);font-weight:600}
+.goals.two{grid-template-columns:1fr 1fr}
+.sublabel.hint{margin-top:-6px}
 
-.prompts{margin-top:44px;border-top:1px solid var(--haze-soft)}
-details{border-bottom:1px solid var(--haze-soft)}
-summary{
-  display:flex;align-items:center;gap:11px;
-  padding:14px 2px;cursor:pointer;list-style:none;
-  font-size:13.5px;color:var(--dim);
+.fixbox{margin:0 0 34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.fixbox summary{
+  cursor:pointer;list-style:none;padding:16px 2px;
+  display:flex;align-items:baseline;gap:10px;
+  font-size:17px;font-weight:600;
 }
-summary::-webkit-details-marker{display:none}
-summary:hover{color:var(--paper)}
-summary u{
-  width:7px;height:7px;border-radius:50%;flex:none;text-decoration:none;
-}
-summary .len{margin-left:auto;font-size:12px;color:var(--dimmer);font-variant-numeric:tabular-nums}
-details p{
-  margin:0 0 18px;padding:0 2px 0 18px;
-  font-size:13px;line-height:1.68;color:var(--dimmer);
-  max-width:62ch;
-}
+.fixbox summary::-webkit-details-marker{display:none}
+.fixbox summary::after{content:'+';margin-left:auto;color:var(--stone-2);font-weight:400;font-size:18px;line-height:1}
+.fixbox[open] summary::after{content:'−'}
+.fixbox summary small{font-weight:400;color:var(--stone-2);font-size:15px}
+.fixbox summary .count{color:var(--honey)}
+.fixbody{padding:0 2px 20px}
+.fixbody .fine{margin:16px 0 0;font-size:14px;color:var(--stone-2);line-height:1.55}
 
-/* ── error ──────────────────────────────────────────── */
+.checks{list-style:none;margin:0 0 6px;padding:0}
+.checks li{margin:0 0 10px}
+.checks label{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+.checks input{
+  appearance:none;-webkit-appearance:none;flex:none;
+  width:20px;height:20px;margin:1px 0 0;border-radius:6px;
+  border:1.5px solid var(--stone-2);background:none;
+  display:grid;place-items:center;cursor:pointer;
+}
+.checks input:checked{background:var(--sage);border-color:var(--sage)}
+.checks input:checked::after{
+  content:'';width:10px;height:5px;margin-top:-2px;
+  border:2px solid var(--night);border-top:0;border-right:0;transform:rotate(-45deg);
+}
+.checks input:checked + span{color:var(--porcelain)}
+.checkstate{margin:14px 0 12px}
+.checkstate.ok{color:var(--sage)}
+.settingsline{margin:0 0 16px;color:var(--stone)}
+.settingsline b{font-weight:500;color:var(--porcelain)}
+.fine.center{text-align:center;font-size:14px;color:var(--stone-2);margin:14px auto 0;max-width:46ch;line-height:1.55}
+
+.ideas{margin-top:34px}
+.ideas h2{font-size:17px;font-weight:600;margin:0 0 12px}
+.idea{
+  display:block;width:100%;text-align:left;
+  padding:14px 16px;margin-bottom:8px;border-radius:14px;
+  background:var(--glaze);color:var(--stone);
+  transition:background-color .15s ease,color .15s ease;
+}
+.idea:hover{background:var(--glaze-2);color:var(--porcelain)}
+
+.advanced{margin-top:22px;font-size:14px;color:var(--stone-2)}
+.advanced summary{cursor:pointer;width:max-content;padding:4px 0;border-radius:4px}
+.advanced summary:hover{color:var(--stone)}
+.seedrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+.seedrow input{
+  width:130px;background:var(--glaze);border:1.5px solid transparent;border-radius:10px;
+  padding:7px 11px;outline:none;
+}
+.seedrow input:focus{border-color:var(--line)}
+
+.recent{margin-top:44px}
+.recent h2{font-size:17px;font-weight:600;margin:0 0 6px}
+.rlist{list-style:none;margin:0;padding:0}
+.rlist li{border-bottom:1px solid var(--line)}
+.rlist button{display:flex;align-items:baseline;gap:14px;width:100%;text-align:left;padding:14px 2px}
+.rtitle{flex:1;color:var(--stone);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rlist button:hover .rtitle{color:var(--porcelain)}
+.rmeta{font-size:14px;color:var(--stone-2);flex:none;font-variant-numeric:tabular-nums}
+.rmeta.done{color:var(--sage)}
+.rmeta.error{color:var(--danger)}
+.rmeta.running,.rmeta.queued{color:var(--ember)}
+.empty{color:var(--stone-2);padding:14px 0}
+
+/* ── shared session title ───────────────────────── */
+.title{
+  font-family:var(--serif);font-weight:400;
+  font-size:clamp(24px,5.6vw,30px);line-height:1.22;
+  text-align:center;margin:40px auto 6px;max-width:26ch;
+}
+.titlesub{text-align:center;color:var(--stone);margin:0 auto 26px;max-width:46ch}
+
+/* ── waiting: breathe with the bowl ─────────────── */
+.bowlwait{position:relative;width:min(300px,78vw);aspect-ratio:1;margin:10px auto 0}
+.bowlwait svg{position:absolute;inset:0;width:100%;height:100%}
+.breath{
+  position:absolute;inset:17%;border-radius:50%;
+  background:radial-gradient(circle at 50% 42%, var(--glaze-2) 0%, var(--glaze) 70%);
+  box-shadow:inset 0 0 0 1.5px var(--line);
+  display:grid;place-items:center;text-align:center;
+  transform:scale(.84);
+}
+.breath span{font-family:var(--serif);font-size:20px;color:var(--porcelain);padding:0 14%}
+@media (prefers-reduced-motion:no-preference){
+  .breath.go{animation:breathe 10s ease-in-out infinite}
+  .arc.active{animation:glow 2.4s ease-in-out infinite}
+}
+@keyframes breathe{0%{transform:scale(.84)}40%{transform:scale(1)}100%{transform:scale(.84)}}
+@keyframes glow{0%,100%{opacity:.45}50%{opacity:1}}
+
+.step{text-align:center;margin:26px auto 0;max-width:40ch}
+.step b{display:block;font-weight:600;font-size:17px}
+.step span{color:var(--stone);font-size:15px}
+.elapsed{text-align:center;color:var(--stone-2);font-size:14px;margin-top:10px;font-variant-numeric:tabular-nums}
+
+/* ── player: the bowl ───────────────────────────── */
+.bowl{position:relative;width:min(380px,88vw);aspect-ratio:1;margin:0 auto}
+.bowl canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;cursor:pointer;touch-action:manipulation}
+.play{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:84px;height:84px;border-radius:50%;
+  background:var(--honey);color:var(--on-honey);
+  display:grid;place-items:center;
+  transition:filter .15s ease;
+}
+.play:hover{filter:brightness(1.05)}
+.time{text-align:center;margin-top:12px;color:var(--stone);font-variant-numeric:tabular-nums}
+.time em{font-style:normal;color:var(--porcelain)}
+
+.legend{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 22px;margin:22px 0 0;padding:0;list-style:none;font-size:14px;color:var(--stone)}
+.legend li{display:flex;align-items:center;gap:8px}
+.legend i{width:9px;height:9px;border-radius:50%;flex:none}
+.legend b{font-weight:500;color:var(--porcelain)}
+
+.actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:30px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:46px;padding:0 20px;border-radius:100px;
+  border:1.5px solid var(--line);color:var(--porcelain);
+  font-size:15px;font-weight:500;text-decoration:none;
+  transition:border-color .15s ease,background-color .15s ease;
+}
+.btn:hover{border-color:var(--stone-2)}
+.btn.solid{background:var(--porcelain);color:var(--night);border-color:transparent}
+.btn.solid:hover{filter:brightness(.95)}
+
+.more{margin-top:40px;border-top:1px solid var(--line)}
+.more details{border-bottom:1px solid var(--line)}
+.more summary{cursor:pointer;padding:16px 2px;color:var(--stone);list-style:none;display:flex;justify-content:space-between;gap:12px}
+.more summary::-webkit-details-marker{display:none}
+.more summary::after{content:'+';color:var(--stone-2);font-size:18px;line-height:1}
+.more details[open] summary::after{content:'−'}
+.more summary:hover{color:var(--porcelain)}
+.more .body{padding:0 2px 18px;font-size:14px;color:var(--stone);line-height:1.65}
+.phasep{margin:0 0 14px}
+.phasep strong{display:flex;align-items:center;gap:8px;color:var(--porcelain);font-weight:600;margin-bottom:2px}
+.phasep strong i{width:8px;height:8px;border-radius:50%}
+.yourwords{margin:0 0 16px;color:var(--stone)}
+.loglines div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--stone-2)}
+.rawlink{color:var(--stone);text-underline-offset:3px}
+
+.center{text-align:center}
+.linkbtn{color:var(--stone);text-decoration:underline;text-underline-offset:4px;margin-top:26px;padding:6px}
+.linkbtn:hover{color:var(--porcelain)}
+
+/* ── error ──────────────────────────────────────── */
 .fail{
-  border:1px solid rgba(224,118,111,.34);
-  background:rgba(224,118,111,.06);
-  border-radius:var(--r-md);
-  padding:18px 20px;
-  margin-top:8px;
+  border:1.5px solid rgba(240,143,127,.38);border-radius:16px;
+  padding:18px 20px;margin:0 auto;max-width:520px;
 }
-.fail h3{margin:0 0 7px;font-size:14.5px;font-weight:600;color:var(--danger)}
-.fail p{margin:0;font-size:13px;color:var(--dim);line-height:1.6;word-break:break-word}
-.back{
-  margin-top:26px;font-size:13.5px;color:var(--dim);
-  border-bottom:1px solid var(--haze);padding-bottom:2px;
-}
-.back:hover{color:var(--paper)}
-
-.banner{
-  display:none;
-  margin:0 0 22px;padding:11px 15px;
-  border:1px solid var(--haze);border-radius:var(--r-md);
-  font-size:13px;color:var(--dim);
-}
-.banner.on{display:block}
+.fail b{display:block;color:var(--danger);font-weight:600;margin-bottom:4px}
+.fail p{margin:0;color:var(--stone);font-size:15px;word-break:break-word}
 
 @media (max-width:520px){
-  header{padding:16px 20px}
-  main{padding:4px 20px 56px}
-  .lede{margin-top:34px}
-  .transport{gap:12px}
+  header{padding:18px 20px 0}
+  main{padding:0 20px 32px}
+  .dock{margin:0 -20px;padding-left:20px;padding-right:20px}
+  h1{margin-top:34px}
+  .modes{display:flex}
+  .mode{flex:1;padding:9px 8px}
+  .mode .full{display:none}
+  .mode .short{display:inline}
+  .mode{white-space:nowrap}
+  .goals{grid-template-columns:1fr 1fr}
+  .goal{padding:14px 13px}
+}
+@media (max-width:360px){
+  .mode{font-size:14px;padding:9px 4px}
 }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="mark" id="home" role="button" tabindex="0">VNX <span>functional music</span></div>
-  <div class="status"><i class="dot" id="dot"></i><span id="statusText">Checking</span></div>
+  <div class="mark" id="home" role="button" tabindex="0">ResonaLife</div>
+  <div class="status" aria-live="polite"><i class="dot" id="dot"></i><span id="statusText">Connecting</span></div>
 </header>
 
 <main>
 
 <!-- ══ compose ══════════════════════════════════════ -->
 <section class="screen on" id="sCompose">
-  <div class="banner" id="banner"></div>
+  <h1>How do you want to feel?</h1>
+  <p class="lede" id="lede"></p>
 
-  <h1 class="lede">What should this session do?</h1>
-  <p class="sub">Describe the state you're in and where you want to end up. Include a length, or pick one below.</p>
+  <div class="modes" role="group" aria-label="How to create your session">
+    <button class="mode" id="modeGuided" aria-pressed="true"><span class="full">Choose settings</span><span class="short">Guided</span></button>
+    <button class="mode" id="modeOwn" aria-pressed="false"><span class="full">Write your own</span><span class="short">Your words</span></button>
+    <button class="mode" id="modePain" aria-pressed="false">Pain relief</button>
+  </div>
 
-  <div class="composer">
-    <textarea id="req" rows="3" placeholder="Wind down after a long shift — restless, need to get to sleep. 20 minutes."></textarea>
-    <div class="tray">
-      <button class="chip" data-min="10">10 min</button>
-      <button class="chip" data-min="20">20 min</button>
-      <button class="chip" data-min="30">30 min</button>
-      <button class="chip" data-min="45">45 min</button>
-      <span class="spacer"></span>
-      <button class="go" id="go">Generate session</button>
+  <!-- guided -->
+  <div id="panelGuided">
+    <div class="q">
+      <h2 id="lblGoal">What's it for?</h2>
+      <div class="goals" id="goals" role="group" aria-labelledby="lblGoal"></div>
+      <input class="field" id="goalText" type="text" maxlength="160" placeholder="For example: calm down before a big presentation" aria-label="What the session is for" hidden>
+    </div>
+
+    <div class="q">
+      <h2 id="lblLen">How long?</h2>
+      <div class="chips lengths" id="lengths" role="group" aria-labelledby="lblLen"></div>
+      <div class="minrow" id="minRow" hidden>
+        <input class="field" id="minText" type="number" inputmode="numeric" min="1" max="120" step="1" aria-label="Length in minutes">
+        <span>minutes</span>
+        <span class="warn" id="minWarn" hidden>Choose between 1 and 120.</span>
+      </div>
+    </div>
+
+    <div class="q">
+      <h2>Sounds</h2>
+      <p class="sublabel" id="lblNature">Background</p>
+      <div class="chips" id="nature" role="group" aria-labelledby="lblNature"></div>
+      <input class="field" id="natureText" type="text" maxlength="100" placeholder="For example: a crackling fireplace" aria-label="Your own background sound" hidden>
+
+      <p class="sublabel later" id="lblInstr">Instruments <small>pick any, or none to let us choose</small></p>
+      <div class="chips" id="instr" role="group" aria-labelledby="lblInstr"></div>
+      <input class="field" id="instrText" type="text" maxlength="100" placeholder="For example: kalimba and cello" aria-label="Your own instruments" hidden>
+    </div>
+
+    <div class="q">
+      <h2><label for="notes">Anything else?</label><small>optional</small></h2>
+      <textarea class="notes" id="notes" rows="3" maxlength="400" placeholder="Just got off a night shift. No bells, please."></textarea>
     </div>
   </div>
 
-  <div class="seedrow">
-    <label for="seed">Seed</label>
-    <input id="seed" type="number" placeholder="random" inputmode="numeric">
-    <span>Reuse a seed to regenerate the same session.</span>
+  <!-- write your own -->
+  <div id="panelOwn" hidden>
+    <div class="composer">
+      <textarea id="own" rows="3" maxlength="1200" aria-label="Describe your session"
+        placeholder="Describe how you feel now, how you want to feel, and any sounds you'd like."></textarea>
+      <button class="send" id="send" aria-label="Create session" disabled>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5"/></svg>
+      </button>
+    </div>
+    <p class="hint" id="lenHint" aria-live="polite"></p>
+
+    <div class="ideas">
+      <h2>Need a starting point?</h2>
+      <div id="ideas"></div>
+    </div>
   </div>
 
-  <div class="rail">
-    <div class="rail-track"></div>
-    <div class="rail-legend">
-      <b style="color:var(--match)">match</b>
-      <b style="color:var(--transition)">transition</b>
-      <b style="color:var(--settle)">settle</b>
+  <!-- pain relief: Functional Music Guideline, Hospice & Chronic Illness, Module 1 -->
+  <div id="panelPain" hidden>
+    <p class="notice"><b>A comfort aid, not a treatment.</b> Music from this tool is a wellness and comfort aid. It is not a medical treatment and does not replace pain medication, clinical care or a board-certified music therapist. If there is a real medical emergency, please call the emergency number.</p>
+
+    <div class="q">
+      <h2 id="lblPainLen">How long?</h2>
+      <div class="chips lengths" id="painLengths" role="group" aria-labelledby="lblPainLen"></div>
+      <div class="minrow" id="painMinRow" hidden>
+        <input class="field" id="painMinText" type="number" inputmode="numeric" min="10" max="60" step="1" aria-label="Length in minutes">
+        <span>minutes</span>
+        <span class="warn" id="painMinWarn" hidden>Choose between 10 and 60.</span>
+      </div>
     </div>
-    <p class="rail-note">Every session moves through three phases. It starts where you are, bridges across, and holds at the state you asked for — tempo descending the whole way, with no arrival.</p>
+
+    <div class="q">
+      <h2 id="lblEnding">How should it end?</h2>
+      <div class="goals two" id="endings" role="group" aria-labelledby="lblEnding"></div>
+    </div>
+
+    <div class="q">
+      <h2>Sound</h2>
+      <p class="sublabel" id="lblLead">Lead</p>
+      <div class="chips" id="leads" role="group" aria-labelledby="lblLead"></div>
+      <div id="pianoRow">
+        <p class="sublabel later" id="lblPiano">Piano</p>
+        <div class="chips" id="pianoTone" role="group" aria-labelledby="lblPiano"></div>
+      </div>
+      <p class="sublabel later" id="lblMelody">Melody</p>
+      <div class="chips" id="melody" role="group" aria-labelledby="lblMelody"></div>
+      <p class="sublabel later" id="lblPainNature">Nature texture <small>only if the listener enjoys it</small></p>
+      <div class="chips" id="painNature" role="group" aria-labelledby="lblPainNature"></div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblTempo">Tempo <small>default 58 BPM</small></h2>
+      <p class="sublabel hint">Lower if the person breathes slowly or is drowsy. Higher if 50 feels sluggish to them.</p>
+      <div class="chips lengths" id="tempos" role="group" aria-labelledby="lblTempo"></div>
+    </div>
+
+    <div class="q">
+      <h2><label for="painNotes">Anything else?</label><small>optional</small></h2>
+      <textarea class="notes" id="painNotes" rows="3" maxlength="400" placeholder="She loves the sea. Keep everything very quiet."></textarea>
+    </div>
+
+    <details class="fixbox" id="fixBox">
+      <summary>Fix what you heard <small>when regenerating</small> <small class="count" id="fixCount"></small></summary>
+      <div class="fixbody">
+        <p class="sublabel">Pick what went wrong in the last session. Each adds one line to the prompt.</p>
+        <div class="chips" id="fixes" role="group" aria-label="Problems heard in the last session"></div>
+        <p class="fine">An audible jump between sections: regenerate, and if it repeats, choose a shorter session. A click or gap at the loop point: choose the loop ending again and use “Hear the loop point” to check the join. If the same problem is still there after two regenerations, send the prompt, the settings and a short description to ResonaLife support.</p>
+      </div>
+    </details>
+  </div>
+
+  <details class="advanced">
+    <summary>Advanced</summary>
+    <div class="seedrow">
+      <label for="seed">Seed</label>
+      <input id="seed" type="number" inputmode="numeric" placeholder="Random">
+      <span>Use the same seed to recreate a session.</span>
+    </div>
+  </details>
+
+  <div class="dock" id="dock">
+    <p class="summary" id="summary"></p>
+    <button class="create" id="create">Create my session</button>
   </div>
 
   <div class="recent">
-    <h2>Recent sessions</h2>
+    <h2>Your sessions</h2>
     <ul class="rlist" id="rlist"></ul>
   </div>
 </section>
 
-<!-- ══ generating ═══════════════════════════════════ -->
+<!-- ══ creating ═════════════════════════════════════ -->
 <section class="screen" id="sLoading">
-  <p class="echo" id="echoLoad"></p>
-  <div class="ticks" id="ticks"></div>
-  <div class="phase">
-    <span id="phaseText" class="now">Waiting for the queue</span>
-    <span class="elapsed" id="elapsed">0:00</span>
+  <p class="title" id="loadTitle"></p>
+  <p class="titlesub">Take a slow breath while it's composed.</p>
+
+  <div class="bowlwait">
+    <svg viewBox="0 0 300 300" id="ring" aria-hidden="true"></svg>
+    <div class="breath" id="breath"><span id="breathText">Breathe in</span></div>
   </div>
-  <div class="live" id="live"></div>
-  <div class="log" id="log"></div>
+
+  <div class="step" aria-live="polite">
+    <b id="stepTitle">Getting ready</b>
+    <span id="stepText"></span>
+  </div>
+  <p class="elapsed" id="elapsed">0:00</p>
+
+  <div class="more">
+    <details>
+      <summary>Behind the scenes</summary>
+      <div class="body">
+        <p class="yourwords" id="loadWords"></p>
+        <p class="settingsline" id="loadSettings" hidden></p>
+        <div id="loadPrompts"></div>
+        <div class="loglines" id="loadLog"></div>
+      </div>
+    </details>
+  </div>
 </section>
 
-<!-- ══ session ══════════════════════════════════════ -->
+<!-- ══ listen ═══════════════════════════════════════ -->
 <section class="screen" id="sDone">
-  <p class="echo" id="echoDone"></p>
+  <p class="title" id="doneTitle"></p>
+  <p class="titlesub" id="doneSub">Ready to listen. Headphones or a good speaker help.</p>
 
-  <div class="wavewrap" id="wavewrap">
-    <canvas id="wave"></canvas>
-  </div>
-
-  <div class="transport">
+  <div class="bowl">
+    <canvas id="wave" tabindex="0" role="slider" aria-label="Session position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
     <button class="play" id="play" aria-label="Play">
-      <svg id="playIcon" width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.42 2.1a.6.6 0 0 0-.92.5Z"/></svg>
+      <svg id="playIcon" width="26" height="26" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"></svg>
     </button>
-    <div class="time"><em id="tNow">0:00</em> / <span id="tAll">0:00</span></div>
+  </div>
+  <p class="time"><em id="tNow">0:00</em> of <span id="tAll">0:00</span></p>
+
+  <ul class="legend" id="legend"></ul>
+
+  <div class="actions">
+    <a class="btn solid" id="dlMp3" download>Download MP3</a>
+    <a class="btn" id="dlWav" download>Download studio WAV</a>
+    <button class="btn" id="loopCheck" hidden>Hear the loop point</button>
+  </div>
+  <p class="fine center" id="loopNote" hidden>This session loops: it plays until you stop it. “Hear the loop point” plays the last 10 seconds straight into the first 10, so any gap or jump shows up in the middle. To loop it on another device use the studio WAV, since MP3 files can add a short gap.</p>
+
+  <div class="more">
+    <details id="reviewBox" hidden>
+      <summary>Before you play it for someone</summary>
+      <div class="body">
+        <p>Generated music can occasionally contain a surprise. Listen through yourself and tick each check.</p>
+        <ul class="checks" id="checks"></ul>
+        <p class="checkstate" id="checkState" aria-live="polite"></p>
+        <button class="btn" id="fixRegen">Fix and regenerate</button>
+      </div>
+    </details>
+    <details>
+      <summary>How this session was composed</summary>
+      <div class="body">
+        <p class="yourwords" id="doneWords"></p>
+        <p class="settingsline" id="doneSettings" hidden></p>
+        <div id="donePrompts"></div>
+        <p><a class="rawlink" id="dlRaw" download>Unprocessed render (WAV)</a></p>
+      </div>
+    </details>
   </div>
 
-  <div class="dl" style="margin-top:22px">
-    <a id="dlMain" class="primary" download>Download 24-bit master</a>
-    <a id="dlRaw" download>Unprocessed render</a>
-  </div>
-
-  <div class="prompts" id="prompts"></div>
-  <button class="back" id="again">Generate another session</button>
+  <div class="center"><button class="linkbtn" id="again">Create another session</button></div>
 </section>
 
 <!-- ══ error ════════════════════════════════════════ -->
 <section class="screen" id="sError">
-  <p class="echo" id="echoErr"></p>
+  <p class="title">Your session wasn't created</p>
+  <p class="titlesub" id="errSub"></p>
   <div class="fail">
-    <h3>Generation stopped</h3>
+    <b>What happened</b>
     <p id="errText"></p>
   </div>
-  <div class="log" id="errLog"></div>
-  <button class="back" id="retry">Back to compose</button>
+  <div class="actions">
+    <button class="btn solid" id="retry">Try again</button>
+    <button class="btn" id="back">Change my request</button>
+  </div>
+  <div class="more">
+    <details>
+      <summary>Behind the scenes</summary>
+      <div class="body loglines" id="errLog"></div>
+    </details>
+  </div>
 </section>
 
 </main>
 
 <audio id="audio" preload="metadata"></audio>
+<audio id="loopAudio" preload="none"></audio>
 
 <script>
 'use strict';
 
+/* ── presets ─────────────────────────────────────── */
+// from/to phrasing feeds the orchestrator's match -> settle arc
+const GOALS = [
+  { id:'sleep',    name:'Fall asleep',      hint:'Quiet a racing mind',  min:30, goal:'fall asleep',      from:'restless and wired, with a racing mind',         to:'deep, easy sleep' },
+  { id:'anxiety',  name:'Ease anxiety',     hint:'Slow down and steady', min:10, goal:'ease anxiety',     from:'tense and anxious, breathing fast and shallow', to:'calm and grounded' },
+  { id:'unwind',   name:'Unwind',           hint:'Let the day go',       min:20, goal:'unwind',           from:'drained and overstimulated after a long day',   to:'relaxed and at ease' },
+  { id:'focus',    name:'Deep focus',       hint:'Settle into work',     min:45, goal:'focus deeply',     from:'scattered and distracted',                      to:'steady, sustained focus' },
+  { id:'meditate', name:'Meditate',         hint:'Rest in stillness',    min:10, goal:'meditate',         from:'busy and unsettled',                            to:'still, present awareness' },
+  { id:'recover',  name:'Rest and recover', hint:'A restorative break',  min:20, goal:'rest and recover', from:'physically and mentally tired',                 to:'deep, restorative rest' },
+];
+const LENGTHS = [5, 10, 20, 30, 45, 60];
+const NATURE = [
+  { id:'none',   name:'None',        text:'' },
+  { id:'rain',   name:'Rain',        text:'soft rain' },
+  { id:'ocean',  name:'Ocean waves', text:'gentle ocean waves' },
+  { id:'forest', name:'Forest',      text:'quiet forest ambience' },
+  { id:'stream', name:'Stream',      text:'a softly flowing stream' },
+];
+const INSTR = [
+  { id:'bowls',   name:'Singing bowls',  text:'singing bowls' },
+  { id:'piano',   name:'Soft piano',     text:'soft felt piano' },
+  { id:'pads',    name:'Warm pads',      text:'warm ambient pads' },
+  { id:'handpan', name:'Handpan',        text:'handpan' },
+  { id:'strings', name:'Gentle strings', text:'gentle strings' },
+  { id:'drone',   name:'Low drone',      text:'a low sustained drone' },
+];
+const IDEAS = [
+  "I can't switch off after work. 20 minutes to wind down, with rain and soft piano.",
+  "My heart is racing before a flight. 10 minutes to calm down, with singing bowls and slow breathing pace.",
+  "Help me focus on writing for 45 minutes. Steady and warm, no nature sounds.",
+  "A 30 minute sleep session that feels like a wooden cabin during a quiet snowfall.",
+];
+const DEFAULT_MIN = 15;   // what the server uses when no length is mentioned
+const MAX_MIN = 120;
+
+/* pain relief: the guideline's "Tailoring a session" table. Ids match
+   pipeline.pain_relief_settings; the prompt lines behind them live server-side. */
+const PAIN_LENGTHS = [10, 20, 30, 45, 60];
+const PAIN_MIN = 10, PAIN_MAX = 60;
+const PAIN_TEMPOS = [50, 55, 58, 60, 65];
+const PAIN_ENDINGS = [
+  { id:'fade', name:'Fade to silence', hint:'Slowly fades out at the end' },
+  { id:'loop', name:'Seamless loop',   hint:'For overnight or long rest' },
+];
+const PAIN_LEADS = [
+  { id:'piano',   name:'Soft piano + pads',   text:'soft piano and pads' },
+  { id:'strings', name:'Warm strings + pads', text:'warm strings and pads' },
+  { id:'pads',    name:'Pads only',           text:'pads only' },
+];
+const PAIN_PIANO = [
+  { id:false, name:'Soft' },
+  { id:true,  name:'Warmer, felted and distant' },
+];
+const PAIN_MELODY = [
+  { id:'sparse', name:'Very sparse' },
+  { id:'none',   name:'None, pads and sustained tones only' },
+];
+const PAIN_NATURE = [
+  { id:'off',   name:'Off',           text:'' },
+  { id:'wind',  name:'Soft wind',     text:'soft wind' },
+  { id:'waves', name:'Distant waves', text:'distant waves' },
+];
+// the guideline's Troubleshooting table, "Problem you hear" column
+const PAIN_FIXES = [
+  { id:'percussion', name:'Drums or rhythmic hits' },
+  { id:'catchy',     name:'Melody too catchy or busy' },
+  { id:'bright',     name:'Bright or harsh' },
+  { id:'bass',       name:'Bass heavy or rumbly' },
+  { id:'climax',     name:'Builds toward a climax' },
+  { id:'voices',     name:'Voices or choir' },
+  { id:'dark',       name:'Sad, dark or eerie' },
+  { id:'faster',     name:'Tempo drifts faster' },
+];
+const PAIN_DEFAULTS = { min:30, minCustom:false, ending:'fade', bpm:58, lead:'piano', warm:false,
+                        melody:'sparse', nature:'off', fixes:[], notes:'' };
+// the guideline's review checklist
+const CHECKLIST = [
+  { text:'No drums, clicks, knocks or percussive hits anywhere' },
+  { text:'No sudden jumps in volume, and no crescendo or climax' },
+  { text:'No vocals, lyrics, choir-like voices or spoken sounds' },
+  { text:'High end sounds smooth at normal listening volume; nothing bright, glassy or piercing' },
+  { text:'Bass is warm, not booming or rumbling' },
+  { text:'No dissonant or uneasy chords; nothing sounds dark or threatening' },
+  { text:'Tempo feels slow and steady throughout, with no speeding up' },
+  { text:'Joins between phases are inaudible; no abrupt change of instrument or key' },
+  { text:'Melody never becomes catchy or attention-grabbing' },
+  { text:'Nature texture stays quiet and contains no distinct events such as a bird call or splash', nature:true },
+  { text:'Ending is a slow fade to silence', ending:'fade' },
+  { text:'The loop point repeats with no gap or jump', ending:'loop' },
+];
+
+const PHASES = {
+  match:      { color:'--ember', label:'Meets you',   step:'Composing the opening', text:'Matched to how you feel right now.' },
+  transition: { color:'--rose',  label:'Eases you',   step:'Composing the bridge',  text:'Slowly carrying you toward your goal.' },
+  settle:     { color:'--sage',  label:'Settles you', step:'Composing the settle',  text:'Where the session leaves you.' },
+  // pain relief: starts calm and only ever gets calmer
+  immediate_calm:     { color:'--p-calm',    label:'Immediate calm',     step:'Composing the opening',     text:'Enters softly at a slow, steady pulse.' },
+  release_tension:    { color:'--p-release', label:'Release tension',    step:'Composing the release',     text:'Harmony settles and phrases lengthen.' },
+  comfort_and_safety: { color:'--p-comfort', label:'Comfort and safety', step:'Composing the held middle', text:'A stable, predictable pattern to rest in.' },
+  deepen_relaxation:  { color:'--p-deepen',  label:'Deepen relaxation',  step:'Composing the deepening',   text:'Fewer notes, more space and silence.' },
+  weightless_plateau: { color:'--p-float',   label:'Weightless plateau', step:'Composing the plateau',     text:'Pads and sustained tones float.' },
+  fade_or_loop:       { color:'--p-fade',    label:'Fade',               step:'Composing the ending',      text:'A slow, seamless fade to silence.',
+                        loop:{ label:'Loop', text:'An ending that flows straight back into the start.' } },
+};
+
+/* ── helpers ─────────────────────────────────────── */
 const $ = id => document.getElementById(id);
-const PHASE = { match:'--match', transition:'--transition', settle:'--settle' };
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const phaseColor = name => css(PHASE[String(name).split('_')[0]] || '--settle');
+const base = name => String(name || '').replace(/_\d+$/, '');   // settle_2 -> settle, comfort_and_safety_2 -> comfort_and_safety
+const phaseColor = name => css((PHASES[base(name)] || PHASES.settle).color);
+const phaseInfo = (name, ending) => {
+  const ph = PHASES[base(name)] || PHASES.settle;
+  return ending === 'loop' && ph.loop ? { ...ph, ...ph.loop } : ph;
+};
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const finePointer = matchMedia('(pointer: fine)').matches;
 
 const mmss = s => {
   if (!isFinite(s) || s < 0) s = 0;
-  return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+  return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+};
+const listJoin = arr => arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
+const clean = s => String(s || '').trim().replace(/\s+/g, ' ').replace(/[.\s]+$/, '');
+
+// same rule as pipeline.parse_duration: the first "<number> min..." in the text
+const parseMinutes = text => {
+  const m = /(\d+)\s*(?:-|\s)*min/i.exec(text);
+  return m ? parseInt(m[1], 10) : null;
 };
 
-let pollTimer = null, tickTimer = null, startedAt = 0, current = null;
+// "A 30 min session to fall asleep, with soft rain. I'm starting..." -> "30-minute session to fall asleep, with soft rain"
+function titleOf(request){
+  const text = String(request || '').trim();
+  let t = (text.match(/^[^.!?\n]*/) || [''])[0];
+  t = t.replace(/^A\s+(?=\d)/i, '').replace(/^(\d+)\s*min\b/i, '$1-minute').trim();
+  if (!t) return 'Your session';
+  if (t.length > 80) t = t.slice(0, 77).replace(/\s+\S*$/, '') + '…';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+// guided and pain relief requests are built by this page and summed up by their title
+const isGuided = request => /^A \d+ min (?:pain relief )?session\b/.test(String(request || ''));
+// everything after a built request's first sentence is the notes typed with it
+const notesOf = request => String(request || '').replace(/^[^.!?\n]*[.!?]\s*/, '').replace(/\.$/, '').trim();
+
+/* ── state ───────────────────────────────────────── */
+const state = {
+  mode:'guided',
+  goal:'sleep', goalText:'',
+  min:30, minCustom:false, lengthTouched:false,
+  nature:'rain', natureText:'',
+  instr:['bowls'], instrOwn:false, instrText:'',
+  notes:'', own:'',
+  pain:{ ...PAIN_DEFAULTS },
+};
+try { Object.assign(state, JSON.parse(localStorage.getItem('resonalife:prefs') || '{}')); } catch {}
+if (!Array.isArray(state.instr)) state.instr = [];
+state.pain = { ...PAIN_DEFAULTS, ...(state.pain && typeof state.pain === 'object' ? state.pain : {}) };
+if (!Array.isArray(state.pain.fixes)) state.pain.fixes = [];
+if (!['guided', 'own', 'pain'].includes(state.mode)) state.mode = 'guided';
+const save = () => { try { localStorage.setItem('resonalife:prefs', JSON.stringify(state)); } catch {} };
+
+let pollTimer = null, tickTimer = null, breathTimer = null, startedAt = 0;
+let lastRequest = null, lastSeed = null, lastMode = 'iso', lastOptions = null, shownJob = null;
+
+/* ── mode ────────────────────────────────────────── */
+const LEDES = {
+  guided: 'Choose a goal and a length. Your session starts where you are and slowly brings you there.',
+  own:    'Describe the session in your own words. Say how you feel now, how you want to feel, and how long it should be.',
+  pain:   'Designed to support relaxation and comfort for someone in pain. It starts calm and only ever gets calmer.',
+};
+
+function setMode(mode){
+  state.mode = mode; save();
+  $('modeGuided').setAttribute('aria-pressed', mode === 'guided');
+  $('modeOwn').setAttribute('aria-pressed', mode === 'own');
+  $('modePain').setAttribute('aria-pressed', mode === 'pain');
+  $('panelGuided').hidden = mode !== 'guided';
+  $('panelOwn').hidden = mode !== 'own';
+  $('panelPain').hidden = mode !== 'pain';
+  $('dock').hidden = mode === 'own';
+  $('lede').textContent = LEDES[mode];
+  if (mode === 'own') { autosize(); renderOwnHint(); }
+  renderSummary();
+}
+
+/* ── guided: choices ─────────────────────────────── */
+function button(cls, label, pressed, onclick, hint){
+  const b = document.createElement('button');
+  b.className = cls;
+  b.setAttribute('aria-pressed', pressed);
+  if (hint !== undefined) {
+    const bb = document.createElement('b'); bb.textContent = label;
+    const sp = document.createElement('span'); sp.textContent = hint;
+    b.append(bb, sp);
+  } else {
+    b.textContent = label;
+  }
+  b.onclick = onclick;
+  return b;
+}
+
+function renderChoices(){
+  const goals = $('goals'); goals.innerHTML = '';
+  GOALS.forEach(g => goals.append(button('goal', g.name, g.id === state.goal, () => {
+    state.goal = g.id;
+    if (!state.lengthTouched) { state.min = g.min; state.minCustom = false; }
+    save(); renderChoices();
+  }, g.hint)));
+  goals.append(button('goal own', 'Something else', state.goal === 'own', () => {
+    state.goal = 'own'; save(); renderChoices(); $('goalText').focus();
+  }, 'Describe your own goal'));
+  $('goalText').hidden = state.goal !== 'own';
+
+  const lengths = $('lengths'); lengths.innerHTML = '';
+  LENGTHS.forEach(m => lengths.append(button('chip', m + ' min', !state.minCustom && m === state.min, () => {
+    state.min = m; state.minCustom = false; state.lengthTouched = true; save(); renderChoices();
+  })));
+  lengths.append(button('chip own', 'Custom', state.minCustom, () => {
+    state.minCustom = true; state.lengthTouched = true;
+    if (!$('minText').value) $('minText').value = state.min;
+    state.min = parseInt($('minText').value, 10) || 0;
+    save(); renderChoices(); $('minText').focus(); $('minText').select();
+  }));
+  $('minRow').hidden = !state.minCustom;
+
+  const nature = $('nature'); nature.innerHTML = '';
+  NATURE.forEach(n => nature.append(button('chip', n.name, n.id === state.nature, () => {
+    state.nature = n.id; save(); renderChoices();
+  })));
+  nature.append(button('chip own', 'Other', state.nature === 'own', () => {
+    state.nature = 'own'; save(); renderChoices(); $('natureText').focus();
+  }));
+  $('natureText').hidden = state.nature !== 'own';
+
+  const instr = $('instr'); instr.innerHTML = '';
+  INSTR.forEach(i => {
+    const on = state.instr.includes(i.id);
+    instr.append(button('chip', i.name, on, () => {
+      state.instr = on ? state.instr.filter(x => x !== i.id) : [...state.instr, i.id];
+      save(); renderChoices();
+    }));
+  });
+  instr.append(button('chip own', 'Add your own', state.instrOwn, () => {
+    state.instrOwn = !state.instrOwn; save(); renderChoices();
+    if (state.instrOwn) $('instrText').focus();
+  }));
+  $('instrText').hidden = !state.instrOwn;
+
+  renderSummary();
+}
+
+function minutesValid(){ return Number.isInteger(state.min) && state.min >= 1 && state.min <= MAX_MIN; }
+
+function soundsList(){
+  const n = NATURE.find(x => x.id === state.nature);
+  const bg = state.nature === 'own' ? clean(state.natureText) : (n ? n.text : '');
+  const inst = INSTR.filter(i => state.instr.includes(i.id)).map(i => i.text);
+  if (state.instrOwn && clean(state.instrText)) inst.push(clean(state.instrText));
+  return [bg, ...inst].filter(Boolean);
+}
+
+// the goal phrase that follows "A 20 min session"
+function goalPhrase(){
+  if (state.goal === 'own') {
+    const t = clean(state.goalText);
+    return t ? `: ${t.charAt(0).toLowerCase() + t.slice(1)}` : '';
+  }
+  const g = GOALS.find(x => x.id === state.goal) || GOALS[0];
+  return ` to ${g.goal}`;
+}
+
+function guidedProblem(){
+  if (state.goal === 'own' && !clean(state.goalText)) return 'Describe what the session is for.';
+  if (!minutesValid()) return `Choose a length between 1 and ${MAX_MIN} minutes.`;
+  return null;
+}
+
+function renderSummary(){
+  const s = $('summary');
+  const pain = state.mode === 'pain';
+  const problem = pain ? painProblem() : guidedProblem();
+  $('minWarn').hidden = !state.minCustom || minutesValid();
+  $('painMinWarn').hidden = !state.pain.minCustom || painMinutesValid();
+  $('create').disabled = !!problem;
+  s.textContent = '';
+  if (problem) { s.textContent = problem; return; }
+  if (pain) {
+    const em = document.createElement('em');
+    em.textContent = `${state.pain.min}-minute pain relief session`;
+    s.append('A ', em, `, ${painSummary()}.`);
+    return;
+  }
+  const sounds = soundsList();
+  const em = document.createElement('em');
+  em.textContent = `${state.min}-minute session${goalPhrase()}`;
+  s.append('A ', em, sounds.length ? `, with ${listJoin(sounds)}.` : '.');
+}
+
+// "N min" must come first: the server reads the length from the first "<number> min" it finds
+function buildGuidedRequest(){
+  const sounds = soundsList();
+  let r = `A ${state.min} min session${goalPhrase()}`;
+  r += sounds.length ? `, with ${listJoin(sounds)}.` : '.';
+  if (state.goal !== 'own') {
+    const g = GOALS.find(x => x.id === state.goal) || GOALS[0];
+    r += ` I'm starting out ${g.from}. Bring me to ${g.to}.`;
+  }
+  const notes = clean(state.notes);
+  if (notes) r += ' ' + notes + '.';
+  return r;
+}
+
+/* ── pain relief ─────────────────────────────────── */
+// no melody, or the "catchy melody" fix: pads and sustained tones only, so the server drops the piano
+const padsOnly = o => o.melody === 'none' || (o.fixes || []).includes('catchy');
+const leadText = o => o.lead === 'piano' && padsOnly(o)
+  ? 'pads and sustained tones'
+  : (PAIN_LEADS.find(x => x.id === o.lead) || PAIN_LEADS[0]).text;
+
+// one row of single-choice chips
+function chipGroup(el, items, current, pick){
+  el.innerHTML = '';
+  items.forEach(it => el.append(button('chip', it.name, it.id === current, () => pick(it.id))));
+}
+
+function renderPain(){
+  const p = state.pain;
+  const set = (key, v) => { p[key] = v; save(); renderPain(); };
+
+  const lengths = $('painLengths'); lengths.innerHTML = '';
+  PAIN_LENGTHS.forEach(m => lengths.append(button('chip', m + ' min', !p.minCustom && m === p.min, () => {
+    p.min = m; p.minCustom = false; save(); renderPain();
+  })));
+  lengths.append(button('chip own', 'Custom', p.minCustom, () => {
+    p.minCustom = true;
+    if (!$('painMinText').value) $('painMinText').value = p.min;
+    p.min = parseInt($('painMinText').value, 10) || 0;
+    save(); renderPain(); $('painMinText').focus(); $('painMinText').select();
+  }));
+  $('painMinRow').hidden = !p.minCustom;
+
+  const endings = $('endings'); endings.innerHTML = '';
+  PAIN_ENDINGS.forEach(e => endings.append(button('goal', e.name, p.ending === e.id, () => set('ending', e.id), e.hint)));
+
+  chipGroup($('leads'), PAIN_LEADS, p.lead, v => set('lead', v));
+  $('pianoRow').hidden = p.lead !== 'piano' || padsOnly(p);
+  chipGroup($('pianoTone'), PAIN_PIANO, !!p.warm, v => set('warm', v));
+  chipGroup($('melody'), PAIN_MELODY, p.melody, v => set('melody', v));
+  chipGroup($('painNature'), PAIN_NATURE, p.nature, v => set('nature', v));
+  chipGroup($('tempos'), PAIN_TEMPOS.map(b => ({ id:b, name:b + ' BPM' })), p.bpm, v => set('bpm', v));
+
+  const fixes = $('fixes'); fixes.innerHTML = '';
+  PAIN_FIXES.forEach(f => {
+    const on = p.fixes.includes(f.id);
+    fixes.append(button('chip', f.name, on, () => set('fixes', on ? p.fixes.filter(x => x !== f.id) : [...p.fixes, f.id])));
+  });
+  $('fixCount').textContent = p.fixes.length ? `· ${p.fixes.length} on` : '';
+
+  renderSummary();
+}
+
+function painMinutesValid(){ const m = state.pain.min; return Number.isInteger(m) && m >= PAIN_MIN && m <= PAIN_MAX; }
+function painProblem(){ return painMinutesValid() ? null : `Choose a length between ${PAIN_MIN} and ${PAIN_MAX} minutes.`; }
+
+// "soft piano and pads at 58 BPM, with soft wind, fading to silence, 2 fixes"
+function painSummary(settings){
+  const p = settings || state.pain;
+  const nature = PAIN_NATURE.find(x => x.id === p.nature);
+  const parts = [`${leadText(p)} at ${p.bpm} BPM`];
+  if (nature && nature.text) parts.push(`with ${nature.text}`);
+  parts.push(p.ending === 'loop' ? 'looping seamlessly' : 'fading to silence');
+  if (p.fixes && p.fixes.length) parts.push(p.fixes.length === 1 ? '1 fix' : `${p.fixes.length} fixes`);
+  return parts.join(', ');
+}
+
+// "N min" must come first: titleOf and the server both read the first "<number> min"
+function buildPainRequest(){
+  const p = state.pain;
+  let r = `A ${p.min} min pain relief session with ${leadText(p)}, ${p.ending === 'loop' ? 'looping seamlessly' : 'fading to silence'}.`;
+  const notes = clean(p.notes);
+  if (notes) r += ' ' + notes + '.';
+  return r;
+}
+
+function painOptions(){
+  const p = state.pain;
+  return {
+    minutes:p.min, bpm:p.bpm, ending:p.ending, lead:p.lead,
+    warm_piano:p.lead === 'piano' && !padsOnly(p) && !!p.warm, melody:p.melody, nature:p.nature, fixes:[...p.fixes],
+  };
+}
+
+// put a finished session's settings back in the panel, to regenerate it with a fix
+function loadPainOptions(o, request){
+  const p = state.pain;
+  if (Number.isInteger(o.minutes)) {
+    p.min = o.minutes; p.minCustom = !PAIN_LENGTHS.includes(o.minutes);
+    $('painMinText').value = p.minCustom ? o.minutes : '';
+  }
+  if (Number.isInteger(o.bpm)) p.bpm = o.bpm;
+  if (PAIN_ENDINGS.some(x => x.id === o.ending)) p.ending = o.ending;
+  if (PAIN_LEADS.some(x => x.id === o.lead)) p.lead = o.lead;
+  if (PAIN_MELODY.some(x => x.id === o.melody)) p.melody = o.melody;
+  if (PAIN_NATURE.some(x => x.id === o.nature)) p.nature = o.nature;
+  p.warm = !!o.warm_piano;
+  p.fixes = (Array.isArray(o.fixes) ? o.fixes : []).filter(f => PAIN_FIXES.some(x => x.id === f));
+  p.notes = notesOf(request);
+  $('painNotes').value = p.notes;
+  save();
+}
+
+// "58 BPM · Soft piano + pads · Very sparse melody · ..." for the behind-the-scenes panels
+function showSettings(el, job){
+  const o = (job.result && job.result.settings) || job.options;
+  el.hidden = job.mode !== 'pain_relief' || !o;
+  el.textContent = '';
+  if (el.hidden) return;
+  const name = (list, id) => (list.find(x => x.id === id) || {}).name;
+  const lead = leadText(o);
+  const parts = [
+    `${o.bpm} BPM`,
+    lead.charAt(0).toUpperCase() + lead.slice(1) + (o.warm_piano ? ', warmer piano' : ''),
+    o.melody === 'none' ? 'no melody' : 'very sparse melody',
+    o.nature && o.nature !== 'off' ? name(PAIN_NATURE, o.nature).toLowerCase() : 'no nature texture',
+    o.ending === 'loop' ? 'seamless loop' : 'fades to silence',
+  ];
+  const b = document.createElement('b'); b.textContent = 'Settings: ';
+  el.append(b, parts.join(' · '));
+  const fixes = (o.fixes || []).map(f => name(PAIN_FIXES, f)).filter(Boolean);
+  if (fixes.length) el.append(document.createElement('br'), Object.assign(document.createElement('b'), { textContent:'Fixes: ' }), fixes.join(', '));
+  const notes = notesOf(job.request);
+  if (notes) el.append(document.createElement('br'), Object.assign(document.createElement('b'), { textContent:'Notes: ' }), notes);
+}
+
+/* ── write your own ──────────────────────────────── */
+function autosize(){
+  const t = $('own');
+  t.style.height = 'auto';
+  t.style.height = Math.min(t.scrollHeight, 300) + 'px';
+}
+
+function renderOwnHint(){
+  const text = $('own').value;
+  const hint = $('lenHint');
+  $('send').disabled = !text.trim();
+  hint.className = 'hint';
+  hint.textContent = '';
+  if (!text.trim()) { hint.textContent = `Mention a length, like "20 minutes". Otherwise it will be ${DEFAULT_MIN} minutes.`; return; }
+  const m = parseMinutes(text);
+  if (m === null && /\b\d+\s*(h|hr|hrs|hour|hours)\b/i.test(text)) {
+    hint.className = 'hint warn';
+    hint.textContent = `Write the length in minutes, like "60 minutes". Hours aren't understood yet, so this would be ${DEFAULT_MIN} minutes.`;
+    return;
+  }
+  if (m !== null && (m < 1 || m > MAX_MIN)) {
+    hint.className = 'hint warn';
+    hint.textContent = `${m} minutes is outside what's supported. Choose between 1 and ${MAX_MIN} minutes.`;
+    $('send').disabled = true;
+    return;
+  }
+  const b = document.createElement('b');
+  b.textContent = `${m ?? DEFAULT_MIN} minutes`;
+  hint.append('Length: ', b, m === null ? ' (no length mentioned)' : '');
+}
+
+function renderIdeas(){
+  const box = $('ideas'); box.innerHTML = '';
+  IDEAS.forEach(text => {
+    const b = document.createElement('button');
+    b.className = 'idea';
+    b.textContent = text;
+    b.onclick = () => {
+      $('own').value = text; state.own = text; save();
+      autosize(); renderOwnHint(); $('own').focus();
+    };
+    box.append(b);
+  });
+}
+
+/* ── status ──────────────────────────────────────── */
+async function health(){
+  try {
+    const r = await fetch('/health');
+    if (!r.ok) throw new Error();
+    const h = await r.json();
+    if (h.error) {
+      $('dot').className = 'dot bad';
+      $('statusText').textContent = 'Unavailable';
+    } else if (h.running || h.queued) {
+      $('dot').className = 'dot busy';
+      $('statusText').textContent = h.queued ? `Busy, ${h.queued} waiting` : 'Busy';
+    } else {
+      $('dot').className = 'dot ready';
+      $('statusText').textContent = 'Ready';
+    }
+  } catch {
+    $('dot').className = 'dot bad';
+    $('statusText').textContent = 'Offline';
+  }
+}
+
+/* ── recent ──────────────────────────────────────── */
+const STATUS_WORD = { queued:'Waiting', running:'Creating', error:'Not finished' };
+
+async function loadRecent(){
+  const ul = $('rlist');
+  try {
+    const jobs = await (await fetch('/jobs')).json();
+    ul.innerHTML = '';
+    if (!jobs.length) {
+      ul.innerHTML = '<li class="empty">Sessions you create will be listed here.</li>';
+      return;
+    }
+    jobs.slice(0, 8).forEach(j => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      const t = document.createElement('span');
+      const m = document.createElement('span');
+      t.className = 'rtitle'; t.textContent = titleOf(j.request);
+      m.className = 'rmeta ' + j.status;
+      m.textContent = j.status === 'done' && j.result ? mmss(j.result.duration_s) : (STATUS_WORD[j.status] || j.status);
+      b.append(t, m);
+      b.onclick = () => openJob(j.id);
+      li.append(b); ul.append(li);
+    });
+  } catch {
+    ul.innerHTML = '<li class="empty">Your sessions could not be loaded. Check your connection and refresh.</li>';
+  }
+}
 
 /* ── screens ─────────────────────────────────────── */
 function show(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  if (id !== 'sLoading') stopBreath();
   window.scrollTo({ top:0, behavior:'instant' });
 }
 
@@ -486,330 +1181,486 @@ function toCompose(){
   stopAudio();
   show('sCompose');
   loadRecent();
+  if (state.mode === 'own') autosize();
 }
 
-/* ── health ──────────────────────────────────────── */
-async function health(){
-  try {
-    const h = await (await fetch('/health')).json();
-    if (h.error) {
-      $('dot').className = 'dot bad';
-      $('statusText').textContent = 'Models failed to load';
-      $('banner').className = 'banner on';
-      $('banner').textContent = 'The models did not load, so nothing can be generated. Check the server console for the traceback.';
-      $('go').disabled = true;
-    } else if (h.models_loaded) {
-      $('dot').className = 'dot ready';
-      $('statusText').textContent = h.queued ? `${h.queued} in queue` : (h.running ? 'Generating' : 'Ready');
-      $('banner').className = 'banner';
-      $('go').disabled = false;
-    } else {
-      $('dot').className = 'dot warm';
-      $('statusText').textContent = 'Loading models';
-      $('banner').className = 'banner on';
-      $('banner').textContent = 'Models are still loading — this takes a few minutes on first run. You can submit now and it will start automatically.';
-      $('go').disabled = false;
-    }
-  } catch {
-    $('dot').className = 'dot bad';
-    $('statusText').textContent = 'Server unreachable';
-  }
+/* ── create ──────────────────────────────────────── */
+function seedValue(){
+  const raw = $('seed').value.trim();
+  return raw === '' ? null : Number(raw);
 }
 
-/* ── recent ──────────────────────────────────────── */
-async function loadRecent(){
-  try {
-    const jobs = await (await fetch('/jobs')).json();
-    const ul = $('rlist');
-    if (!jobs.length) {
-      ul.innerHTML = '<li class="empty">Nothing generated yet.</li>';
-      return;
-    }
-    ul.innerHTML = '';
-    jobs.slice(0, 8).forEach(j => {
-      const li = document.createElement('li');
-      const b = document.createElement('button');
-      const t = document.createElement('span');
-      const m = document.createElement('span');
-      t.className = 'rtitle'; t.textContent = j.request;
-      m.className = 'rmeta ' + j.status;
-      m.textContent = j.status === 'done' && j.result
-        ? mmss(j.result.duration_s) : j.status;
-      b.append(t, m);
-      b.onclick = () => open(j.id);
-      li.append(b); ul.append(li);
-    });
-  } catch {
-    $('rlist').innerHTML = '<li class="empty">Could not reach the server.</li>';
-  }
-}
-
-/* ── submit ──────────────────────────────────────── */
-async function submit(){
-  const text = $('req').value.trim();
-  if (!text) { $('req').focus(); return; }
-  const seedRaw = $('seed').value.trim();
-
-  $('go').disabled = true;
+async function submit(request, seed, mode = 'iso', options = null){
+  $('create').disabled = true; $('send').disabled = true; $('retry').disabled = true;
+  lastRequest = request; lastSeed = seed; lastMode = mode; lastOptions = options;
   try {
     const r = await fetch('/generate', {
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ request:text, seed: seedRaw === '' ? null : Number(seedRaw) }),
+      body: JSON.stringify({ request, seed, mode, options }),
     });
     if (!r.ok) {
       const body = await r.json().catch(() => ({}));
-      throw new Error(body.detail || `Server returned ${r.status}`);
+      throw new Error(body.detail || `The server answered with status ${r.status}. Try again in a moment.`);
     }
     const { job_id } = await r.json();
-    try { localStorage.setItem('vnx:last', job_id); } catch {}
-    open(job_id);
+    try { localStorage.setItem('resonalife:last', job_id); } catch {}
+    openJob(job_id);
   } catch (e) {
-    fail(text, e.message, []);
+    const msg = /fetch|network/i.test(e.message) ? 'The server could not be reached. Check your connection and try again.' : e.message;
+    fail(request, msg, []);
   } finally {
-    $('go').disabled = false;
+    renderSummary(); renderOwnHint(); $('retry').disabled = false;
   }
 }
 
-/* ── poll ────────────────────────────────────────── */
-function open(id){
+/* ── polling ─────────────────────────────────────── */
+function openJob(id){
   clearInterval(pollTimer); clearInterval(tickTimer);
+  startedAt = 0;
   poll(id);
-  pollTimer = setInterval(() => poll(id), 1500);
+  pollTimer = setInterval(() => poll(id), 2000);
 }
 
 async function poll(id){
   let job;
   try {
     const r = await fetch('/jobs/' + id);
-    if (!r.ok) throw new Error('Job ' + id + ' is not on the server anymore.');
+    if (r.status === 404) throw new Error('This session is no longer on the server. Create a new one.');
+    if (!r.ok) return;          // transient: keep polling
     job = await r.json();
   } catch (e) {
-    clearInterval(pollTimer);
-    return fail('', e.message, []);
+    if (e.message.startsWith('This session')) { clearInterval(pollTimer); fail('', e.message, []); }
+    return;
   }
-  current = job;
+  lastRequest = job.request; lastSeed = job.seed;
+  lastMode = job.mode || 'iso'; lastOptions = job.options || null;
 
   if (job.status === 'done' && job.result) {
     clearInterval(pollTimer); clearInterval(tickTimer);
-    return done(job);
+    return listen(job);
   }
   if (job.status === 'error') {
     clearInterval(pollTimer); clearInterval(tickTimer);
     return fail(job.request, job.error, job.log);
   }
-  loading(job);
+  waiting(job);
 }
 
-/* ── generating screen ───────────────────────────── */
-function loading(job){
-  if ($('sLoading').classList.contains('on') === false) {
-    show('sLoading');
-    startedAt = Date.parse(job.started_at || job.created_at) || Date.now();
-    clearInterval(tickTimer);
-    tickTimer = setInterval(() => {
-      $('elapsed').textContent = mmss((Date.now() - startedAt) / 1000);
-    }, 1000);
-  }
-  $('echoLoad').textContent = '“' + job.request + '”';
+/* ── creating screen ─────────────────────────────── */
+function startBreath(){
+  stopBreath();
+  const el = $('breath'), txt = $('breathText');
+  if (reducedMotion) { txt.textContent = 'Breathe slowly'; return; }
+  el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  const cycle = () => {
+    txt.textContent = 'Breathe in';
+    breathTimer = setTimeout(() => {
+      txt.textContent = 'Breathe out';
+      breathTimer = setTimeout(cycle, 6000);
+    }, 4000);
+  };
+  cycle();
+}
+function stopBreath(){ clearTimeout(breathTimer); $('breath').classList.remove('go'); }
 
-  const p = job.progress;
-  const total = p ? p.total : 3;
-  const ticks = $('ticks');
-  if (ticks.children.length !== total) {
-    ticks.innerHTML = '';
-    for (let i = 0; i < total; i++) ticks.append(document.createElement('i'));
-  }
-  [...ticks.children].forEach((el, i) => {
-    el.classList.remove('active');
-    if (!p) { el.style.background = ''; return; }
-    if (i < p.segment - 1) {
-      el.style.background = phaseColor(nameAt(job, i));
-    } else if (i === p.segment - 1) {
-      el.style.background = phaseColor(p.name);
-      el.classList.add('active');
-    } else {
-      el.style.background = '';
-    }
-  });
-
-  $('phaseText').textContent = job.status === 'queued'
-    ? 'Queued — waiting for the GPU'
-    : p ? `Rendering ${p.name.replace('_',' ')} — segment ${p.segment} of ${p.total}`
-        : 'Writing the three phase prompts';
-
-  // the orchestrator's three prompts arrive in the log as "[match] ..." lines —
-  // pull them out and give them room, they're the only thing worth reading
-  // during a render that takes minutes
-  const written = new Map(), plain = [];
-  (job.log || []).forEach(line => {
-    const m = /^\[(match|transition|settle)\]\s+([\s\S]+)$/.exec(line);
-    if (m) written.set(m[1], m[2]); else plain.push(line);
-  });
-
-  const live = $('live');
-  if (live.childElementCount !== written.size) {
-    live.innerHTML = '';
-    written.forEach((text, name) => {
-      const s = document.createElement('section');
-      s.innerHTML = `<h3><u style="background:${phaseColor(name)}"></u>${name}</h3>`;
-      const p = document.createElement('p');
-      p.textContent = text;
-      s.append(p); live.append(s);
-    });
-  }
-
-  $('log').innerHTML = '';
-  plain.slice(-5).forEach(l => {
-    const d = document.createElement('div'); d.textContent = l; $('log').append(d);
-  });
+function arcPath(cx, cy, r, a0, a1){
+  const pt = a => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
+  const [x0, y0] = pt(a0), [x1, y1] = pt(a1);
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
 }
 
 function nameAt(job, i){
+  if (job.plan && job.plan[i]) return job.plan[i];   // the server's segment list, once planned
   const p = job.progress;
   if (p && i === p.segment - 1) return p.name;
   return i === 0 ? 'match' : i === 1 ? 'transition' : 'settle';
 }
 
-/* ── session screen ──────────────────────────────── */
-let peaks = [], bounds = [];
+function waiting(job){
+  if (!$('sLoading').classList.contains('on')) {
+    show('sLoading');
+    startBreath();
+    clearInterval(tickTimer);
+    tickTimer = setInterval(() => { $('elapsed').textContent = mmss((Date.now() - startedAt) / 1000); }, 1000);
+  }
+  const serverStart = Date.parse(job.started_at || job.created_at);
+  const age = Date.now() - serverStart;
+  // trust the server clock only if it's plausible; otherwise count from when this page first saw the job
+  startedAt = (isFinite(age) && age >= 0 && age < 6 * 3600e3) ? serverStart : (startedAt || Date.now());
+  $('loadTitle').textContent = titleOf(job.request);
+  showWords($('loadWords'), job.request);
+  showSettings($('loadSettings'), job);
+  const ending = job.options && job.options.ending;
 
-function done(job){
+  const p = job.progress;
+  const total = job.plan ? job.plan.length : p ? p.total : job.mode === 'pain_relief' ? 6 : 3;
+  const gap = total > 1 ? 6 : 0, span = 360 / total;
+  const svg = $('ring');
+  svg.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', arcPath(150, 150, 140, i * span + gap / 2, (i + 1) * span - gap / 2 - (total === 1 ? 0.01 : 0)));
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-width', '6');
+    path.setAttribute('stroke-linecap', 'round');
+    let color = css('--line');
+    if (p && i < p.segment - 1) color = phaseColor(nameAt(job, i));
+    if (p && i === p.segment - 1) { color = phaseColor(p.name); path.setAttribute('class', 'arc active'); }
+    path.setAttribute('stroke', color);
+    svg.append(path);
+  }
+
+  if (job.status === 'queued') {
+    $('stepTitle').textContent = 'Getting the studio ready';
+    $('stepText').textContent = 'After a quiet spell this takes a minute or two.';
+  } else if (!p) {
+    $('stepTitle').textContent = 'Planning your session';
+    $('stepText').textContent = 'Shaping how it begins, how it moves and where it ends.';
+  } else {
+    const ph = phaseInfo(p.name, ending);
+    $('stepTitle').textContent = ph.step;
+    $('stepText').textContent = `${ph.text} Part ${p.segment} of ${p.total}.`;
+  }
+
+  renderBehind(job.log, $('loadPrompts'), $('loadLog'), ending);
+}
+
+// written requests are shown in full; guided ones are already summed up by the title
+function showWords(el, request){
+  el.hidden = isGuided(request);
+  el.textContent = isGuided(request) ? '' : `You asked for: “${request}”`;
+}
+
+// the orchestrator's prompts arrive as "[match] ..." / "[immediate_calm] ..." lines in the log
+function renderBehind(log, promptsEl, logEl, ending){
+  const written = new Map(), plain = [];
+  (log || []).forEach(line => {
+    const m = /^\[([a-z_]+)\]\s+([\s\S]+)$/.exec(line);
+    if (m && PHASES[m[1]]) written.set(m[1], m[2]); else plain.push(line);
+  });
+  if (promptsEl) {
+    promptsEl.innerHTML = '';
+    written.forEach((text, name) => promptsEl.append(phaseBlock(name, text, null, ending)));
+  }
+  if (logEl) {
+    logEl.innerHTML = '';
+    if (!plain.length) { const d = document.createElement('div'); d.textContent = 'Nothing yet.'; logEl.append(d); }
+    plain.slice(-6).forEach(l => { const d = document.createElement('div'); d.textContent = l; logEl.append(d); });
+  }
+}
+
+function phaseBlock(name, text, extra, ending){
+  const wrap = document.createElement('div');
+  wrap.className = 'phasep';
+  const s = document.createElement('strong');
+  const i = document.createElement('i');
+  i.style.background = phaseColor(name);
+  s.append(i, phaseInfo(name, ending).label + (extra ? ` (${extra})` : ''));
+  const t = document.createElement('div');
+  t.textContent = text;
+  wrap.append(s, t);
+  return wrap;
+}
+
+/* ── listen screen ───────────────────────────────── */
+let peaks = [], bounds = [], sessionTitle = '';
+
+function listen(job){
   const r = job.result;
+  const pain = (r.mode || job.mode) === 'pain_relief';
+  const ending = r.ending || null;
+  shownJob = job;
   show('sDone');
-  $('echoDone').textContent = '“' + job.request + '”';
+  sessionTitle = titleOf(job.request);
+  $('doneTitle').textContent = sessionTitle;
+  $('doneSub').textContent = pain
+    ? 'Listen through once yourself before playing it for someone.'
+    : 'Ready to listen. Headphones or a good speaker help.';
+  showWords($('doneWords'), job.request);
+  showSettings($('doneSettings'), job);
 
   peaks = r.peaks || [];
   const total = r.segments.reduce((a, s) => a + s.duration_s, 0) || 1;
   let acc = 0;
-  bounds = r.segments.map(s => { acc += s.duration_s; return { end: acc/total, color: phaseColor(s.name) }; });
-  drawWave(0);
+  bounds = r.segments.map(s => { acc += s.duration_s; return { end: acc / total, color: phaseColor(s.name) }; });
+
+  // one legend entry per phase, in the order the session plays them
+  const legend = $('legend'); legend.innerHTML = '';
+  const donePrompts = $('donePrompts'); donePrompts.innerHTML = '';
+  [...new Set(r.segments.map(s => base(s.name)))].forEach(k => {
+    const secs = r.segments.filter(s => base(s.name) === k).reduce((x, s) => x + s.duration_s, 0);
+    const li = document.createElement('li');
+    const dot = document.createElement('i'); dot.style.background = phaseColor(k);
+    const b = document.createElement('b'); b.textContent = phaseInfo(k, ending).label;
+    li.append(dot, b, mmss(secs));
+    legend.append(li);
+    if (r.prompts && r.prompts[k]) donePrompts.append(phaseBlock(k, r.prompts[k], mmss(secs), ending));
+  });
+
+  $('loopCheck').hidden = !r.loop_check_url;
+  $('loopNote').hidden = ending !== 'loop';
+  if (r.loop_check_url) $('loopAudio').src = r.loop_check_url; else $('loopAudio').removeAttribute('src');
+  $('reviewBox').hidden = !pain;
+  if (pain) renderChecklist(job);
 
   const a = $('audio');
+  a.loop = ending === 'loop';
   a.src = r.audio_url;
-  a.onloadedmetadata = () => { $('tAll').textContent = mmss(a.duration || r.duration_s); };
   $('tAll').textContent = mmss(r.duration_s);
+  a.onloadedmetadata = () => { $('tAll').textContent = mmss(a.duration || r.duration_s); };
   a.ontimeupdate = () => {
     $('tNow').textContent = mmss(a.currentTime);
-    drawWave(a.duration ? a.currentTime / a.duration : 0);
+    drawWave(progress());
   };
+  a.onplay = () => setPlayIcon(true);
+  a.onpause = () => setPlayIcon(false);
   a.onended = () => setPlayIcon(false);
+  setPlayIcon(false);
 
-  $('dlMain').href = r.download_url;
-  $('dlRaw').href  = r.raw_url;
+  $('dlMp3').href = r.audio_url;
+  $('dlWav').href = r.download_url;
+  $('dlRaw').href = r.raw_url;
+  $('dlMp3').hidden = !/\.mp3$/i.test(r.audio_url);
 
-  const box = $('prompts');
-  box.innerHTML = '';
-  ['match','transition','settle'].forEach(k => {
-    const seg = r.segments.filter(s => s.name.split('_')[0] === k);
-    const secs = seg.reduce((x, s) => x + s.duration_s, 0);
-    const d = document.createElement('details');
-    d.innerHTML = `<summary><u style="background:${phaseColor(k)}"></u>${k}<span class="len">${mmss(secs)}</span></summary>`;
-    const p = document.createElement('p');
-    p.textContent = r.prompts[k] || '';
-    d.append(p); box.append(d);
-  });
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: sessionTitle, artist: 'ResonaLife' });
+  }
+  requestAnimationFrame(() => drawWave(0));
 }
 
-function drawWave(progress){
+function progress(){
+  const a = $('audio');
+  return a.duration ? a.currentTime / a.duration : 0;
+}
+
+// the waveform wrapped around the rim of a bowl, coloured by phase
+function drawWave(prog){
   const c = $('wave'), ctx = c.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
-  const w = c.clientWidth, h = c.clientHeight;
-  c.width = w * dpr; c.height = h * dpr;
+  const size = c.clientWidth;
+  if (size < 40) return;   // mid-resize the canvas can be a few px wide, and inner - 8 would go negative
+  c.width = size * dpr; c.height = size * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, size, size);
+
+  const cx = size / 2, cy = size / 2;
+  const inner = size * 0.29, reach = size * 0.17;
+
+  const g = ctx.createRadialGradient(cx, cy * 0.9, inner * 0.1, cx, cy, inner * 1.05);
+  g.addColorStop(0, css('--glaze-2'));
+  g.addColorStop(1, css('--glaze'));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, inner - 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = css('--line'); ctx.lineWidth = 1.5; ctx.stroke();
+
   if (!peaks.length) return;
-
-  const bar = 2.5, gap = 1.4, step = bar + gap;
-  const n = Math.floor(w / step);
-  const mid = h / 2;
-
+  const n = Math.max(90, Math.min(180, Math.round(size / 2.2)));
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1.6, size / 190);
   for (let i = 0; i < n; i++) {
     const frac = i / n;
     const v = peaks[Math.floor(frac * peaks.length)] || 0;
-    const bh = Math.max(2, v * (h - 6));
+    const len = 3 + v * reach;
+    const ang = frac * Math.PI * 2 - Math.PI / 2;
     const seg = bounds.find(b => frac <= b.end) || bounds[bounds.length - 1];
-    ctx.fillStyle = seg ? seg.color : css('--dim');
-    ctx.globalAlpha = frac <= progress ? 1 : 0.26;
+    ctx.strokeStyle = seg ? seg.color : css('--stone');
+    ctx.globalAlpha = frac <= prog ? 1 : 0.42;
     ctx.beginPath();
-    ctx.roundRect(i * step, mid - bh/2, bar, bh, bar/2);
-    ctx.fill();
+    ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
+    ctx.lineTo(cx + Math.cos(ang) * (inner + len), cy + Math.sin(ang) * (inner + len));
+    ctx.stroke();
   }
   ctx.globalAlpha = 1;
+
+  c.setAttribute('aria-valuenow', Math.round(prog * 100));
+  c.setAttribute('aria-valuetext', `${$('tNow').textContent} of ${$('tAll').textContent}`);
 }
 
 function setPlayIcon(playing){
   $('playIcon').innerHTML = playing
     ? '<rect x="4" y="2.6" width="3" height="10.8" rx="1"/><rect x="9" y="2.6" width="3" height="10.8" rx="1"/>'
-    : '<path d="M4.5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.42 2.1a.6.6 0 0 0-.92.5Z"/>';
+    : '<path d="M5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.92 2.1a.6.6 0 0 0-.92.5Z"/>';
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
 }
 
-function stopAudio(){ const a = $('audio'); a.pause(); a.removeAttribute('src'); setPlayIcon(false); }
+function stopAudio(){
+  const a = $('audio'); a.pause(); a.removeAttribute('src'); a.load(); setPlayIcon(false);
+  const l = $('loopAudio'); l.pause(); l.removeAttribute('src'); l.load();
+}
+
+/* ── pain relief review ──────────────────────────── */
+// the guideline's checklist; ticks aren't saved, each new session starts unticked
+function renderChecklist(job){
+  const o = (job.result && job.result.settings) || job.options || {};
+  const ending = job.result.ending || o.ending || 'fade';
+  const items = CHECKLIST.filter(c => (!c.nature || (o.nature && o.nature !== 'off')) && (!c.ending || c.ending === ending));
+  const ul = $('checks'); ul.innerHTML = '';
+  items.forEach(c => {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    const box = document.createElement('input'); box.type = 'checkbox';
+    const span = document.createElement('span'); span.textContent = c.text;
+    box.onchange = updateCheckState;
+    label.append(box, span); li.append(label); ul.append(li);
+  });
+  $('reviewBox').open = true;
+  updateCheckState();
+}
+
+function updateCheckState(){
+  const boxes = [...$('checks').querySelectorAll('input')];
+  const done = boxes.filter(b => b.checked).length;
+  const el = $('checkState');
+  el.className = 'checkstate' + (done === boxes.length ? ' ok' : '');
+  el.textContent = done === boxes.length
+    ? 'Every check passes. It is ready to play.'
+    : `${done} of ${boxes.length} checked. If any check fails, regenerate the session rather than playing it.`;
+}
 
 /* ── error screen ────────────────────────────────── */
 function fail(request, message, log){
   show('sError');
-  $('echoErr').textContent = request ? '“' + request + '”' : '';
-  $('errText').textContent = message || 'The server did not say why.';
-  $('errLog').innerHTML = '';
-  (log || []).slice(-6).forEach(l => {
-    const d = document.createElement('div'); d.textContent = l; $('errLog').append(d);
-  });
+  $('errSub').textContent = request
+    ? `${titleOf(request)}. You can try again with the same request.`
+    : 'Go back and set up your session again.';
+  $('errText').textContent = message || 'The server stopped without giving a reason. Try again.';
+  $('retry').hidden = !request;
+  renderBehind(log, null, $('errLog'));
 }
 
 /* ── wiring ──────────────────────────────────────── */
-$('go').onclick = submit;
-$('req').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
-});
+$('modeGuided').onclick = () => setMode('guided');
+$('modeOwn').onclick = () => { setMode('own'); $('own').focus(); };
+$('modePain').onclick = () => setMode('pain');
 
-document.querySelectorAll('.chip').forEach(chip => {
-  chip.onclick = () => {
-    const t = $('req');
-    const m = chip.dataset.min;
-    t.value = t.value.replace(/,?\s*\d+\s*min(?:ute)?s?\.?\s*$/i, '').trim();
-    t.value = (t.value ? t.value.replace(/[.,]$/, '') + ', ' : '') + m + ' minutes.';
-    t.focus();
-  };
-});
+$('goalText').value = state.goalText;
+$('natureText').value = state.natureText;
+$('instrText').value = state.instrText;
+$('notes').value = state.notes;
+$('own').value = state.own;
+if (state.minCustom) $('minText').value = state.min;
+$('painNotes').value = state.pain.notes;
+if (state.pain.minCustom) $('painMinText').value = state.pain.min;
 
-$('play').onclick = () => {
-  const a = $('audio');
-  if (a.paused) { a.play(); setPlayIcon(true); } else { a.pause(); setPlayIcon(false); }
+$('goalText').oninput = e => { state.goalText = e.target.value; save(); renderSummary(); };
+$('natureText').oninput = e => { state.natureText = e.target.value; save(); renderSummary(); };
+$('instrText').oninput = e => { state.instrText = e.target.value; save(); renderSummary(); };
+$('notes').oninput = e => { state.notes = e.target.value; save(); };
+$('minText').oninput = e => {
+  const v = Number(e.target.value);
+  state.min = Number.isInteger(v) ? v : 0;
+  save(); renderSummary();
 };
 
-$('wavewrap').onclick = e => {
-  const a = $('audio');
-  if (!a.duration) return;
-  const r = $('wave').getBoundingClientRect();
-  a.currentTime = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * a.duration;
+$('painNotes').oninput = e => { state.pain.notes = e.target.value; save(); };
+$('painMinText').oninput = e => {
+  const v = Number(e.target.value);
+  state.pain.min = Number.isInteger(v) ? v : 0;
+  save(); renderSummary();
 };
 
+$('create').onclick = () => {
+  if (state.mode === 'pain') {
+    if (!painProblem()) submit(buildPainRequest(), seedValue(), 'pain_relief', painOptions());
+  } else if (!guidedProblem()) {
+    submit(buildGuidedRequest(), seedValue());
+  }
+};
+
+$('own').oninput = e => { state.own = e.target.value; save(); autosize(); renderOwnHint(); };
+$('own').addEventListener('keydown', e => {
+  // Enter sends on a keyboard; Shift+Enter (and Enter on phones) adds a new line
+  const send = e.key === 'Enter' && !e.isComposing && ((finePointer && !e.shiftKey) || e.metaKey || e.ctrlKey);
+  if (send) { e.preventDefault(); $('send').click(); }
+});
+$('send').onclick = () => {
+  if ($('send').disabled) return;
+  const text = $('own').value.trim();
+  if (text) submit(text, seedValue());
+};
+
+['notes', 'painNotes'].forEach(id => $(id).addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('create').click(); }
+}));
+
+$('retry').onclick = () => { if (lastRequest) submit(lastRequest, lastSeed ?? null, lastMode, lastOptions); };
+
+// back to the pain relief panel with this session's settings, fixes open
+$('fixRegen').onclick = () => {
+  if (shownJob && shownJob.options) loadPainOptions(shownJob.options, shownJob.request);
+  toCompose();
+  setMode('pain');
+  renderPain();
+  $('fixBox').open = true;
+  requestAnimationFrame(() => $('fixBox').scrollIntoView({ block:'start', behavior: reducedMotion ? 'auto' : 'smooth' }));
+};
+
+$('loopCheck').onclick = () => {
+  const l = $('loopAudio');
+  if (!l.paused) { l.pause(); return; }
+  $('audio').pause();
+  l.currentTime = 0;
+  l.play();
+};
+$('loopAudio').onplay = () => { $('loopCheck').textContent = 'Stop the loop check'; };
+$('loopAudio').onpause = $('loopAudio').onended = () => { $('loopCheck').textContent = 'Hear the loop point'; };
+$('back').onclick = toCompose;
 $('again').onclick = toCompose;
-$('retry').onclick = toCompose;
 $('home').onclick = toCompose;
 $('home').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toCompose(); } };
 
-window.addEventListener('resize', () => {
-  if ($('sDone').classList.contains('on')) {
-    const a = $('audio');
-    drawWave(a.duration ? a.currentTime / a.duration : 0);
-  }
+$('play').onclick = () => {
+  const a = $('audio');
+  $('loopAudio').pause();
+  if (a.paused) a.play(); else a.pause();
+};
+
+$('wave').addEventListener('click', e => {
+  const a = $('audio');
+  if (!a.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const dx = e.clientX - rect.left - rect.width / 2;
+  const dy = e.clientY - rect.top - rect.height / 2;
+  if (Math.hypot(dx, dy) < rect.width * 0.2) return;   // centre belongs to the play button
+  let ang = Math.atan2(dy, dx) + Math.PI / 2;
+  if (ang < 0) ang += Math.PI * 2;
+  a.currentTime = (ang / (Math.PI * 2)) * a.duration;
+  drawWave(progress());
+});
+$('wave').addEventListener('keydown', e => {
+  const a = $('audio');
+  if (!a.duration) return;
+  const jump = { ArrowRight:15, ArrowUp:15, ArrowLeft:-15, ArrowDown:-15, PageUp:60, PageDown:-60 }[e.key];
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); $('play').click(); return; }
+  if (jump === undefined) return;
+  e.preventDefault();
+  a.currentTime = Math.min(Math.max(a.currentTime + jump, 0), a.duration);
+  drawWave(progress());
 });
 
+window.addEventListener('resize', () => {
+  if ($('sDone').classList.contains('on')) drawWave(progress());
+});
+
+renderChoices();
+renderPain();
+renderIdeas();
+setMode(state.mode);
 health();
-setInterval(health, 8000);
+setInterval(health, 10000);
 loadRecent();
 
-/* resume the last job if it was still running when the tab was closed */
+/* pick up a session that was still being created when the page was closed */
 (async () => {
   let last = null;
-  try { last = localStorage.getItem('vnx:last'); } catch {}
+  try { last = localStorage.getItem('resonalife:last'); } catch {}
   if (!last) return;
   try {
-    const j = await (await fetch('/jobs/' + last)).json();
-    if (j.status === 'queued' || j.status === 'running') open(last);
+    const r = await fetch('/jobs/' + last);
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j.status === 'queued' || j.status === 'running') openJob(last);
   } catch {}
 })();
 </script>

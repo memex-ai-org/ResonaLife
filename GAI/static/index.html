@@ -39,6 +39,19 @@
   --p-float:   #8CD7D2;  /* weightless plateau */
   --p-fade:    #608A9D;  /* fade or loop */
 
+  /* the dementia and depression arcs. Light and dark alternate so neighbouring
+     phases stay apart for colour-blind viewers, around the ring's join too (worst
+     ΔE 10.2); dementia's calming mode uses the pain relief colours above */
+  --c-apricot:    #FABB8C;
+  --c-lilac:      #D3C0F4;
+  --c-green:      #A4DEB3;
+  --c-teal:       #8BD7D9;
+  --c-rose:       #CE79A0;
+  --c-indigo:     #7385C9;
+  --c-slate:      #7191A8;
+  --c-terracotta: #D18663;
+  --c-moss:       #68A182;
+
   --danger:   #F08F7F;
 
   --serif: 'Young Serif', ui-serif, Georgia, 'Times New Roman', serif;
@@ -87,15 +100,18 @@ h1{
 .lede{color:var(--stone);margin:0 0 26px;max-width:44ch;font-size:17px}
 
 /* ── mode switch ────────────────────────────────── */
+/* two rows: the ways to make an ISO session, then the guideline's care modules */
 .modes{
-  display:inline-flex;gap:4px;padding:4px;margin:0 0 34px;
-  background:var(--glaze);border-radius:100px;
+  display:inline-grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:4px;margin:0 0 34px;
+  background:var(--glaze);border-radius:24px;
 }
 .mode{
+  grid-column:span 2;
   padding:9px 18px;border-radius:100px;
   color:var(--stone);font-size:15px;font-weight:500;
   transition:background-color .15s ease,color .15s ease;
 }
+.mode.wide{grid-column:span 3}
 .mode:hover{color:var(--porcelain)}
 .mode[aria-pressed="true"]{background:var(--glaze-2);color:var(--porcelain);box-shadow:inset 0 0 0 1.5px var(--line)}
 .mode .short{display:none}
@@ -250,6 +266,23 @@ textarea.notes:focus{border-color:var(--line)}
 .settingsline b{font-weight:500;color:var(--porcelain)}
 .fine.center{text-align:center;font-size:14px;color:var(--stone-2);margin:14px auto 0;max-width:46ch;line-height:1.55}
 
+/* ── dementia and depression ────────────────────── */
+.notice p{margin:0}
+.notice p + p{margin-top:8px}
+.qnote{font-size:14px;color:var(--stone-2);margin:12px 2px 0;line-height:1.5}
+.field.tight{margin-top:0}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.pf{display:block;margin-top:16px}
+.pf.wide{grid-column:1 / -1}
+.pf > span{display:block;font-size:14px;color:var(--stone-2);margin:0 0 8px}
+.pf .field{margin-top:0}
+.pf textarea.notes{min-height:76px}
+.quality{list-style:none;margin:8px 0 16px;padding:0}
+.quality li{margin:0 0 8px}
+.quality b{font-weight:500;color:var(--porcelain)}
+.watch{margin:0 0 16px}
+#lblDpStart{margin-top:16px}
+
 .ideas{margin-top:34px}
 .ideas h2{font-size:17px;font-weight:600;margin:0 0 12px}
 .idea{
@@ -377,13 +410,14 @@ textarea.notes:focus{border-color:var(--line)}
   main{padding:0 20px 32px}
   .dock{margin:0 -20px;padding-left:20px;padding-right:20px}
   h1{margin-top:34px}
-  .modes{display:flex}
-  .mode{flex:1;padding:9px 8px}
+  .modes{display:grid}
+  .mode{padding:9px 8px}
   .mode .full{display:none}
   .mode .short{display:inline}
   .mode{white-space:nowrap}
   .goals{grid-template-columns:1fr 1fr}
   .goal{padding:14px 13px}
+  .pgrid{grid-template-columns:1fr}
 }
 @media (max-width:360px){
   .mode{font-size:14px;padding:9px 4px}
@@ -405,9 +439,11 @@ textarea.notes:focus{border-color:var(--line)}
   <p class="lede" id="lede"></p>
 
   <div class="modes" role="group" aria-label="How to create your session">
-    <button class="mode" id="modeGuided" aria-pressed="true"><span class="full">Choose settings</span><span class="short">Guided</span></button>
-    <button class="mode" id="modeOwn" aria-pressed="false"><span class="full">Write your own</span><span class="short">Your words</span></button>
+    <button class="mode wide" id="modeGuided" aria-pressed="true"><span class="full">Choose settings</span><span class="short">Guided</span></button>
+    <button class="mode wide" id="modeOwn" aria-pressed="false"><span class="full">Write your own</span><span class="short">Your words</span></button>
     <button class="mode" id="modePain" aria-pressed="false">Pain relief</button>
+    <button class="mode" id="modeDementia" aria-pressed="false">Dementia</button>
+    <button class="mode" id="modeDepression" aria-pressed="false">Depression</button>
   </div>
 
   <!-- guided -->
@@ -464,7 +500,10 @@ textarea.notes:focus{border-color:var(--line)}
 
   <!-- pain relief: Functional Music Guideline, Hospice & Chronic Illness, Module 1 -->
   <div id="panelPain" hidden>
-    <p class="notice"><b>A comfort aid, not a treatment.</b> Music from this tool is a wellness and comfort aid. It is not a medical treatment and does not replace pain medication, clinical care or a board-certified music therapist. If there is a real medical emergency, please call the emergency number.</p>
+    <div class="notice">
+      <p><b>A comfort aid, not a treatment.</b> Music from this tool is a wellness and comfort aid. It is not a medical treatment and does not replace pain medication, clinical care or a board-certified music therapist. It does not treat, cure, slow, reverse or prevent dementia, depression or any other condition, and it does not replace psychotherapy or medication. If there is a real medical emergency, please call the emergency number.</p>
+      <p><b>Emotional distress:</b> if someone shows severe emotional distress, or you are worried about their safety, stop the session and contact their care team, a mental health professional, a crisis line or the emergency number. A music session is never a substitute for professional or emergency support.</p>
+    </div>
 
     <div class="q">
       <h2 id="lblPainLen">How long?</h2>
@@ -511,6 +550,179 @@ textarea.notes:focus{border-color:var(--line)}
       <div class="fixbody">
         <p class="sublabel">Pick what went wrong in the last session. Each adds one line to the prompt.</p>
         <div class="chips" id="fixes" role="group" aria-label="Problems heard in the last session"></div>
+        <p class="fine">An audible jump between sections: regenerate, and if it repeats, choose a shorter session. A click or gap at the loop point: choose the loop ending again and use “Hear the loop point” to check the join. If the same problem is still there after two regenerations, send the prompt, the settings and a short description to ResonaLife support.</p>
+      </div>
+    </details>
+  </div>
+
+  <!-- dementia: Functional Music Guideline, Hospice & Chronic Illness, Module 2 -->
+  <div id="panelDementia" hidden>
+    <div class="notice">
+      <p><b>A comfort aid, not a treatment.</b> Music from this tool is a wellness and comfort aid. It is not a medical treatment and does not replace pain medication, clinical care or a board-certified music therapist. It does not treat, cure, slow, reverse or prevent dementia, depression or any other condition, and it does not replace psychotherapy or medication. If there is a real medical emergency, please call the emergency number.</p>
+      <p><b>Emotional distress:</b> if someone shows severe emotional distress, or you are worried about their safety, stop the session and contact their care team, a mental health professional, a crisis line or the emergency number. A music session is never a substitute for professional or emergency support.</p>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDmLen">How long?</h2>
+      <div class="chips lengths" id="dmLengths" role="group" aria-labelledby="lblDmLen"></div>
+      <div class="minrow" id="dmMinRow" hidden>
+        <input class="field" id="dmMinText" type="number" inputmode="numeric" min="10" max="60" step="1" aria-label="Length in minutes">
+        <span>minutes</span>
+        <span class="warn" id="dmMinWarn" hidden>Choose between 10 and 60.</span>
+      </div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDmMode">Session mode</h2>
+      <div class="goals two" id="dmModes" role="group" aria-labelledby="lblDmMode"></div>
+      <p class="qnote" id="dmModeNote" hidden>Reminiscence mode styles the music on the listener profile below. Add what you know about their era, culture and favorite music.</p>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDmTime">Time of day <small>optional</small></h2>
+      <p class="sublabel hint">Gives each part of the day its own musical identity, to support orientation and routine.</p>
+      <div class="chips" id="dmTimes" role="group" aria-labelledby="lblDmTime"></div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDmEnding">How should it end?</h2>
+      <div class="goals" id="dmEndings" role="group" aria-labelledby="lblDmEnding"></div>
+      <p class="qnote" id="dmEndingNote" hidden></p>
+    </div>
+
+    <div class="q">
+      <h2>Sound</h2>
+      <p class="sublabel" id="lblDmDensity">Instruments at once <small>fewer for higher sensitivity or agitation</small></p>
+      <div class="chips" id="dmDensity" role="group" aria-labelledby="lblDmDensity"></div>
+      <p class="sublabel later" id="lblDmMelody">Melody <small>simpler if the person seems confused or overwhelmed</small></p>
+      <div class="chips" id="dmMelody" role="group" aria-labelledby="lblDmMelody"></div>
+      <p class="sublabel later" id="lblDmPerc">Percussion <small id="dmPercNote"></small></p>
+      <div class="chips" id="dmPercussion" role="group" aria-labelledby="lblDmPerc"></div>
+      <p class="sublabel later" id="lblDmVoice">Voice texture <small>only if the person enjoys it; never with lyrics</small></p>
+      <div class="chips" id="dmVoice" role="group" aria-labelledby="lblDmVoice"></div>
+      <p class="sublabel later"><label for="dmFamiliar">Familiar instrument</label> <small>optional, from the listener’s culture</small></p>
+      <input class="field tight" id="dmFamiliar" type="text" maxlength="40" placeholder="For example: erhu, accordion or harmonica">
+    </div>
+
+    <div class="q">
+      <h2 id="lblDmTempo">Tempo <small>default 65 BPM</small></h2>
+      <p class="sublabel hint">45–65 for calming, evening or pre-sleep; up to 80 for gentle daytime engagement; never change quickly.</p>
+      <div class="chips lengths" id="dmTempos" role="group" aria-labelledby="lblDmTempo"></div>
+    </div>
+
+    <details class="fixbox" id="dmProfileBox">
+      <summary>Listener profile <small>optional</small> <small class="count" id="dmProfileCount"></small></summary>
+      <div class="fixbody">
+        <p class="sublabel">Fill in what you know, and leave out anything you don’t know or the person wouldn’t want shared. It shapes the musical style, never the safety rules.</p>
+        <div class="pgrid" id="dmProfile"></div>
+      </div>
+    </details>
+
+    <div class="q">
+      <h2><label for="dmNotes">Anything else?</label><small>optional</small></h2>
+      <textarea class="notes" id="dmNotes" rows="3" maxlength="400" placeholder="She loved dancing to waltzes. Keep the volume low."></textarea>
+    </div>
+
+    <details class="fixbox" id="dmFixBox">
+      <summary>Fix what you heard <small>when regenerating</small> <small class="count" id="dmFixCount"></small></summary>
+      <div class="fixbody">
+        <p class="sublabel">Pick what went wrong in the last session. Each adds one line to the prompt.</p>
+        <div class="chips" id="dmFixes" role="group" aria-label="Problems heard in the last session"></div>
+        <p class="fine">An audible jump between sections: regenerate, and if it repeats, choose a shorter session. A click or gap at the loop point: choose the loop ending again and use “Hear the loop point” to check the join. If the same problem is still there after two regenerations, send the prompt, the settings and a short description to ResonaLife support.</p>
+      </div>
+    </details>
+  </div>
+
+  <!-- depression: Functional Music Guideline, Hospice & Chronic Illness, Module 3 -->
+  <div id="panelDepression" hidden>
+    <div class="notice">
+      <p><b>A comfort aid, not a treatment.</b> Music from this tool is a wellness and comfort aid. It is not a medical treatment and does not replace pain medication, clinical care or a board-certified music therapist. It does not treat, cure, slow, reverse or prevent dementia, depression or any other condition, and it does not replace psychotherapy or medication. If there is a real medical emergency, please call the emergency number.</p>
+      <p><b>Emotional distress:</b> if someone shows severe emotional distress, or you are worried about their safety, stop the session and contact their care team, a mental health professional, a crisis line or the emergency number. A music session is never a substitute for professional or emergency support.</p>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDpLen">How long?</h2>
+      <div class="chips lengths" id="dpLengths" role="group" aria-labelledby="lblDpLen"></div>
+      <div class="minrow" id="dpMinRow" hidden>
+        <input class="field" id="dpMinText" type="number" inputmode="numeric" min="10" max="60" step="1" aria-label="Length in minutes">
+        <span>minutes</span>
+        <span class="warn" id="dpMinWarn" hidden>Choose between 10 and 60.</span>
+      </div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDpMode">Session mode</h2>
+      <div class="goals two" id="dpModes" role="group" aria-labelledby="lblDpMode"></div>
+    </div>
+
+    <div class="q" id="dpTimeRow">
+      <h2 id="lblDpTime">Time of day <small>optional</small></h2>
+      <p class="sublabel hint">Each part of the day pairs with a session mode.</p>
+      <div class="chips" id="dpTimes" role="group" aria-labelledby="lblDpTime"></div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDpEnergy">Energy level</h2>
+      <p class="sublabel hint">Match the person’s current energy; move up one level at a time.</p>
+      <div class="chips" id="dpEnergy" role="group" aria-labelledby="lblDpEnergy"></div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDpEnding">How should it end?</h2>
+      <div class="goals two" id="dpEndings" role="group" aria-labelledby="lblDpEnding"></div>
+      <p class="qnote" id="dpEndingNote" hidden></p>
+    </div>
+
+    <div class="q">
+      <h2>Sound</h2>
+      <div id="dpHarmonyRow">
+        <p class="sublabel" id="lblDpHarmony">Harmony color <small>minor colors allowed, never dominant</small></p>
+        <div class="chips" id="dpHarmony" role="group" aria-labelledby="lblDpHarmony"></div>
+      </div>
+      <div id="dpBrightRow">
+        <p class="sublabel" id="lblDpBright">Brightness <small>never bright or euphoric</small></p>
+        <div class="chips" id="dpBrightness" role="group" aria-labelledby="lblDpBright"></div>
+      </div>
+      <div id="dpPercRow">
+        <p class="sublabel later" id="lblDpPerc">Percussion <small>light, in Gentle activation only</small></p>
+        <div class="chips" id="dpPercussion" role="group" aria-labelledby="lblDpPerc"></div>
+      </div>
+      <div id="dpSparseRow">
+        <p class="sublabel later" id="lblDpSparse">Arrangement <small>sparser: long sustained tones, soft dynamics, very little rhythm</small></p>
+        <div class="chips" id="dpSparse" role="group" aria-labelledby="lblDpSparse"></div>
+      </div>
+    </div>
+
+    <div class="q">
+      <h2 id="lblDpTempo">Tempo <small>default 58 BPM</small></h2>
+      <p class="sublabel hint">50–65 for comfort or relaxation; 65–80 only in Gentle activation, reached gradually.</p>
+      <p class="sublabel" id="lblDpStart" hidden>Starts at</p>
+      <div class="chips lengths" id="dpTempos" role="group" aria-labelledby="lblDpTempo"></div>
+      <div id="dpEndRow" hidden>
+        <p class="sublabel later" id="lblDpEnd">Rises gradually to</p>
+        <div class="chips lengths" id="dpTemposEnd" role="group" aria-labelledby="lblDpEnd"></div>
+      </div>
+      <p class="qnote" id="dpTempoNote" hidden>Daytime starts at 65 BPM, so the whole session stays within 65–80.</p>
+    </div>
+
+    <details class="fixbox" id="dpProfileBox">
+      <summary>Listener profile <small>optional</small> <small class="count" id="dpProfileCount"></small></summary>
+      <div class="fixbody">
+        <p class="sublabel">Fill in what you know, and leave out anything you don’t know or the person wouldn’t want shared. It shapes the music, never the emotional-safety rules.</p>
+        <div class="pgrid" id="dpProfile"></div>
+      </div>
+    </details>
+
+    <div class="q">
+      <h2><label for="dpNotes">Anything else?</label><small>optional</small></h2>
+      <textarea class="notes" id="dpNotes" rows="3" maxlength="400" placeholder="Mornings are hardest for him. He likes the sound of the guitar."></textarea>
+    </div>
+
+    <details class="fixbox" id="dpFixBox">
+      <summary>Fix what you heard <small>when regenerating</small> <small class="count" id="dpFixCount"></small></summary>
+      <div class="fixbody">
+        <p class="sublabel">Pick what went wrong in the last session. Each adds one line to the prompt.</p>
+        <div class="chips" id="dpFixes" role="group" aria-label="Problems heard in the last session"></div>
         <p class="fine">An audible jump between sections: regenerate, and if it repeats, choose a shorter session. A click or gap at the loop point: choose the loop ending again and use “Hear the loop point” to check the join. If the same problem is still there after two regenerations, send the prompt, the settings and a short description to ResonaLife support.</p>
       </div>
     </details>
@@ -594,6 +806,11 @@ textarea.notes:focus{border-color:var(--line)}
         <p>Generated music can occasionally contain a surprise. Listen through yourself and tick each check.</p>
         <ul class="checks" id="checks"></ul>
         <p class="checkstate" id="checkState" aria-live="polite"></p>
+        <div id="quality" hidden>
+          <p id="qualityLead"></p>
+          <ul class="quality" id="qualityList"></ul>
+        </div>
+        <p class="watch" id="watchNote" hidden></p>
         <button class="btn" id="fixRegen">Fix and regenerate</button>
       </div>
     </details>
@@ -730,6 +947,183 @@ const CHECKLIST = [
   { text:'The loop point repeats with no gap or jump', ending:'loop' },
 ];
 
+// shared by the dementia and depression panels
+const TIME_NAMES = { none:'Not set', morning:'Morning', afternoon:'Afternoon', daytime:'Daytime', evening:'Evening', presleep:'Pre-sleep' };
+const TIME_WORDS = { morning:'for the morning', afternoon:'for the afternoon', daytime:'for the daytime', evening:'for the evening', presleep:'before sleep' };
+const END_WORDS = { close:'ending on a soft, resolved phrase', fade:'fading to silence', loop:'looping seamlessly' };
+const END_NAMES = { close:'soft close', fade:'fades to silence', loop:'seamless loop' };
+
+/* dementia: the guideline's Module 2. Ids match pipeline.dementia_settings; the
+   prompt lines behind them live server-side. */
+const DM_LENGTHS = [10, 20, 30, 45, 60];
+const DM_MIN = 10, DM_MAX = 60;
+const DM_TEMPOS = [45, 50, 55, 60, 65, 70, 75, 80];
+const DM_BPM = [45, 80];            // the safe range
+const DM_BPM_DEFAULT = [50, 75];    // "50–75 BPM by default"
+// the ranges a Session mode or Time of day line sets (config.DEMENTIA_BPM_BY)
+const DM_BPM_BY = { calming:[45, 65], evening:[45, 65], presleep:[45, 65], social:[60, 80], morning:[60, 80] };
+const DM_MODES = [
+  { id:'default',      name:'Default',      hint:'Familiar, comfortable, gently engaging' },
+  { id:'calming',      name:'Calming',      hint:'For anxiety, agitation or restlessness' },
+  { id:'reminiscence', name:'Reminiscence', hint:'Styled on the listener’s musical past' },
+  { id:'social',       name:'Social',       hint:'Easy to hum along to' },
+];
+const DM_TIMES = ['none', 'morning', 'afternoon', 'evening', 'presleep'].map(id => ({ id, name:TIME_NAMES[id] }));
+const DM_ENDINGS = [
+  { id:'close', name:'Soft close',      hint:'Ends on a soft, resolved phrase' },
+  { id:'fade',  name:'Fade to silence', hint:'Slowly fades out at the end' },
+  { id:'loop',  name:'Seamless loop',   hint:'For evening, pre-sleep and overnight' },
+];
+const DM_DENSITY = [ { id:'usual', name:'Two or three' }, { id:'fewer', name:'No more than two' } ];
+const DM_MELODY = [ { id:'short', name:'Short phrases, gently repeated' }, { id:'simpler', name:'Simpler, one short phrase' } ];
+const DM_PERCUSSION = [ { id:'light', name:'Light and soft' }, { id:'off', name:'Off' } ];
+const DM_VOICE = [ { id:'off', name:'Off' }, { id:'wordless', name:'Soft and wordless' } ];
+// the guideline's listener profile; chip fields offer the values it lists
+const DM_PROFILE = [
+  { id:'age',             label:'Age',                                    half:true, placeholder:'For example: 84' },
+  { id:'culture',         label:'Cultural background',                    half:true, placeholder:'For example: grew up in Tainan' },
+  { id:'preferred_music', label:'Preferred music',                        half:true, placeholder:'For example: folk songs, film music' },
+  { id:'favorites',       label:'Favorite artists / genres',              half:true, placeholder:'For example: waltzes, big band' },
+  { id:'era',             label:'Familiar era',                           half:true, placeholder:'For example: 1960s–70s' },
+  { id:'activity',        label:'Current activity',                       half:true, placeholder:'For example: resting after lunch' },
+  { id:'memories',        label:'Personal memories and life experiences', area:true, placeholder:'For example: danced by the sea every summer' },
+  { id:'state',           label:'Current emotional state',                chips:['calm', 'anxious', 'agitated', 'restless', 'lonely', 'sad', 'confused', 'emotionally withdrawn'] },
+  { id:'outcome',         label:'Desired outcome',                        chips:['relaxation', 'emotional comfort', 'gentle engagement', 'reminiscence', 'social interaction', 'morning orientation', 'evening calming', 'sleep preparation'] },
+  { id:'sensitivity',     label:'Sensory sensitivity',                    half:true, placeholder:'For example: startles easily' },
+  { id:'environment',     label:'Listening environment',                  half:true, placeholder:'For example: day room speaker' },
+];
+// the guideline's Troubleshooting table, "Problem you hear" column
+const DM_FIXES = [
+  { id:'unfamiliar', name:'Sounds unfamiliar or experimental' },
+  { id:'busy',       name:'Too busy or layered' },
+  { id:'wanders',    name:'Melody wanders or never repeats' },
+  { id:'monotonous', name:'Feels monotonous or stuck' },
+  { id:'percussion', name:'Percussion is strong or syncopated', percussion:true },
+  { id:'loud',       name:'Sudden loud moments or abrupt changes' },
+  { id:'tempo',      name:'Tempo drifts or changes' },
+  { id:'sad',        name:'Feels sad, eerie or frightening' },
+  { id:'lyrics',     name:'Lyrics or words appear' },
+  { id:'song',       name:'Sounds like a recognizable song' },
+  { id:'unsettled',  name:'Calming session doesn’t settle', calming:true },
+];
+const DM_DEFAULTS = { min:30, minCustom:false, mode:'default', time:'none', ending:'close', bpm:65, density:'usual',
+                      melody:'short', percussion:'light', voice:'off', familiar:'', profile:{}, fixes:[], notes:'' };
+// the guideline's review checklist and quality check
+const DM_CHECKLIST = [
+  { text:'No sudden loud sounds, jumps in volume or abrupt transitions' },
+  { text:'No frightening sound effects or unpredictable dramatic events' },
+  { text:'Harmony sounds consonant and resolves predictably; nothing harshly dissonant' },
+  { text:'Rhythm is steady and simple: no aggressive percussion, strong syncopation or polyrhythms' },
+  { text:'Tempo stays steady and inside the range for the session, with no rapid changes' },
+  { text:'Only a few instruments at once; nothing dense or overwhelming' },
+  { text:'Melody is short and memorable, repeating with subtle variation without becoming monotonous' },
+  { text:'No lyrics; any voice is soft and wordless' },
+  { text:'Sound is warm and rounded: no sharp attacks, harsh highs, distortion, heavy sub-bass or sudden stereo movement' },
+  { text:'Nothing sounds frightening, melancholic, aggressive or chaotic' },
+  { text:'The style suits the person’s generation and culture, and no passage copies a recognizable existing song' },
+  { text:'Ending is a soft close or fade', ending:['close', 'fade'] },
+  { text:'The loop point repeats with no gap or jump', ending:'loop' },
+];
+
+/* depression: the guideline's Module 3. Ids match pipeline.depression_settings. */
+const DP_LENGTHS = [10, 20, 30, 45, 60];
+const DP_MIN = 10, DP_MAX = 60;
+const DP_TEMPOS = [50, 55, 58, 60, 65];
+const DP_TEMPOS_END = [65, 70, 75, 80];
+const DP_MODES = [
+  { id:'comfort',    name:'Comfort',           hint:'Meets a heavy mood, then settles into warmth' },
+  { id:'activation', name:'Gentle activation', hint:'Low motivation, or calm but withdrawn' },
+  { id:'relaxation', name:'Relaxation',        hint:'Anxiety, restlessness or tension; evenings' },
+  { id:'sleep',      name:'Sleep preparation', hint:'Emotional fatigue; before sleep' },
+];
+// "Pair each part of the day with the session mode shown"
+const DP_TIMES = { comfort:[], activation:['morning', 'daytime'], relaxation:['evening'], sleep:['presleep'] };
+const DP_ENDINGS = [
+  { id:'fade', name:'Fade to silence', hint:'Slowly fades out at the end' },
+  { id:'loop', name:'Seamless loop',   hint:'For sleep preparation or overnight' },
+];
+const DP_ENDINGS_BY = { comfort:['fade', 'loop'], activation:['fade'], relaxation:['fade'], sleep:['loop'] };
+const DP_ENDING_NOTES = {
+  activation:'Gentle activation ends at a steady, gentle energy, then fades to silence.',
+  relaxation:'Relaxation ends with a slow fade.',
+  sleep:'Sleep preparation ends in a seamless loop.',
+};
+const DP_ENERGY = [ { id:'low', name:'Low' }, { id:'moderate', name:'Moderate' }, { id:'higher', name:'Higher activation' } ];
+const DP_HARMONY = [ { id:'warm', name:'Warm, gently opening' }, { id:'resonance', name:'A little more minor color' } ];
+const DP_BRIGHTNESS = [ { id:'warm', name:'Warm' }, { id:'brighter', name:'Slightly brighter' } ];
+const DP_PERCUSSION = [ { id:'off', name:'Off' }, { id:'light', name:'Light' } ];
+const DP_SPARSE = [ { id:false, name:'Usual' }, { id:true, name:'Sparser' } ];
+const DP_PROFILE = [
+  { id:'age',         label:'Age',                        half:true, placeholder:'For example: 67' },
+  { id:'culture',     label:'Cultural background',        half:true, placeholder:'For example: grew up in Ohio' },
+  { id:'genres',      label:'Preferred genres',           half:true, placeholder:'For example: folk, soft rock' },
+  { id:'artists',     label:'Favorite artists',           half:true, placeholder:'Artists they return to' },
+  { id:'background',  label:'Musical background',         half:true, placeholder:'For example: played guitar' },
+  { id:'activity',    label:'Current activity',           half:true, placeholder:'For example: before a short walk' },
+  { id:'state',       label:'Current emotional state',    chips:['low mood', 'emotional numbness', 'sadness', 'anxiety', 'loneliness', 'low motivation', 'restlessness', 'emotional fatigue', 'calm but withdrawn'] },
+  { id:'outcome',     label:'Desired functional outcome', chips:['emotional comfort', 'relaxation', 'gentle activation', 'focus', 'daily activity', 'exercise preparation', 'social engagement', 'morning activation', 'evening relaxation', 'sleep preparation'] },
+  { id:'environment', label:'Listening environment',      half:true, placeholder:'For example: headphones at home' },
+  { id:'sensitivity', label:'Sensory sensitivity',        half:true, placeholder:'For example: tires of bright sounds' },
+];
+const DP_FIXES = [
+  { id:'heavy',       name:'Feels too sad or heavy' },
+  { id:'cheerful',    name:'Feels forced or too cheerful' },
+  { id:'rises',       name:'Energy rises too fast', modes:['activation', 'comfort'] },
+  { id:'never_lifts', name:'Activation session never lifts', activation:true },
+  { id:'minor',       name:'Minor key dominates' },
+  { id:'bright',      name:'Sound is harsh or too bright' },
+  { id:'percussion',  name:'Percussion is driving or aggressive', percussion:true },
+  { id:'melody',      name:'Melody is dramatic or repetitive' },
+  { id:'lyrics',      name:'Lyrics or words appear' },
+];
+// percussion only ever plays in Gentle activation, whose own line adds light percussion
+const DP_DEFAULTS = { min:30, minCustom:false, mode:'comfort', time:'none', ending:'fade', bpm:58, bpmEnd:70, energy:'low',
+                      harmony:'warm', brightness:'warm', percussion:'light', sparser:false, profile:{}, fixes:[], notes:'' };
+const DP_CHECKLIST = [
+  { text:'The opening matches a low mood: quiet and gentle, not cheerful or energetic' },
+  { text:'Nothing amplifies hopelessness, despair, isolation, fear, anger or severe sadness' },
+  { text:'Nothing sounds excessively dark, oppressive, dramatic or emotionally destabilizing' },
+  { text:'Never artificially cheerful, euphoric or overly bright' },
+  { text:'Minor-key color, if any, doesn’t dominate; no long unresolved dissonance' },
+  { text:'Any rise in energy is gradual, and happens only in Gentle activation mode' },
+  { text:'Tempo stays inside the range for the session mode, with no sudden changes' },
+  { text:'No aggressive percussion, chaotic rhythm or sudden volume increases' },
+  { text:'Melody is simple and warm: not dramatic, manipulative or overly repetitive' },
+  { text:'No lyrics or spoken words' },
+  { text:'High end is soft: no harsh transients, distortion, heavy sub-bass or abrupt stereo movement' },
+  { text:'Ending is a slow fade to silence', ending:'fade' },
+  { text:'The loop point repeats with no gap or jump', ending:'loop' },
+];
+
+// each module's review checklist, and the quality check that follows it
+const CHECKLISTS = { pain_relief:CHECKLIST, dementia:DM_CHECKLIST, depression:DP_CHECKLIST };
+const QUALITY = {
+  dementia: {
+    lead:'Then rate the session on these five dimensions. Target overall experience: Familiar → Safe → Comfortable → Engaging → Emotionally Supportive. The music should feel less like a conventional song and more like a continuously adaptive auditory environment designed around the person’s needs.',
+    items:[
+      ['Familiarity', 'Does the music feel recognizable or emotionally accessible?'],
+      ['Cognitive simplicity', 'Is the musical information easy to process?'],
+      ['Emotional safety', 'Does the music avoid unnecessary emotional or sensory stress?'],
+      ['Functional alignment', 'Does the composition match the intended activity and emotional state?'],
+      ['Personal relevance', 'Does the music reflect the person’s known musical preferences and memories?'],
+    ],
+    watch:'While the session plays, watch how the person responds; if they seem distressed, lower the volume or stop the session.',
+  },
+  depression: {
+    lead:'Then rate the session on these six dimensions. Target experience: Recognize → Comfort → Stabilize → Engage → Gradually Shift. The final composition should feel supportive and human rather than artificially “happy” or emotionally prescriptive.',
+    items:[
+      ['Emotional safety', 'Does the music feel emotionally supportive rather than overwhelming?'],
+      ['Emotional congruence', 'Does it appropriately match the person’s current state?'],
+      ['Gentle activation', 'When activation is the goal, does energy increase gradually rather than abruptly?'],
+      ['Cognitive simplicity', 'Is the music easy to process without unnecessary complexity?'],
+      ['Functional alignment', 'Does the composition serve the requested activity or emotional objective?'],
+      ['Personal relevance', 'Does it reflect the person’s known preferences and musical background?'],
+    ],
+    watch:'While the session plays, watch how the person responds; if they seem more distressed, stop the session. If you are worried about their safety, contact their care team, a mental health professional, a crisis line or the emergency number.',
+  },
+};
+const CARE_MODES = ['pain_relief', 'dementia', 'depression'];
+
 const PHASES = {
   match:      { color:'--ember', label:'Meets you',   step:'Composing the opening', text:'Matched to how you feel right now.' },
   transition: { color:'--rose',  label:'Eases you',   step:'Composing the bridge',  text:'Slowly carrying you toward your goal.' },
@@ -742,6 +1136,44 @@ const PHASES = {
   weightless_plateau: { color:'--p-float',   label:'Weightless plateau', step:'Composing the plateau',     text:'Pads and sustained tones float.' },
   fade_or_loop:       { color:'--p-fade',    label:'Fade',               step:'Composing the ending',      text:'A slow, seamless fade to silence.',
                         loop:{ label:'Loop', text:'An ending that flows straight back into the start.' } },
+  // dementia: familiar, simple and safe; every change gradual
+  familiar:               { color:'--c-apricot', label:'Familiar',               step:'Composing the opening',        text:'A simple, familiar-sounding phrase.' },
+  safe:                   { color:'--c-indigo',  label:'Safe',                   step:'Composing the warmth',         text:'Warm, consonant harmony at an even volume.' },
+  comfortable:            { color:'--c-green',   label:'Comfortable',            step:'Composing the steady middle',  text:'A stable pattern that returns with small changes.' },
+  engaging:               { color:'--c-rose',    label:'Engaging',               step:'Composing the engaging part',  text:'Clear, memorable phrases to hum or tap along to.' },
+  emotionally_supportive: { color:'--c-teal',    label:'Emotionally supportive', step:'Composing the ending',         text:'Instruments thin out and the pace eases.',
+                            fade:{ text:'Instruments thin out, then a slow fade.' },
+                            loop:{ text:'Instruments thin out, then flow back into the start.' } },
+  // dementia, calming mode: stimulation reduces step by step (the pain relief colours)
+  steady_and_familiar:    { color:'--p-calm',    label:'Steady and familiar',    step:'Composing the opening',        text:'A steady, familiar melody on few instruments.' },
+  simplify_rhythm:        { color:'--p-release', label:'Simplify rhythm',        step:'Composing the simpler rhythm', text:'The rhythm simplifies; piano or guitar carries the pulse.' },
+  fewer_instruments:      { color:'--p-comfort', label:'Fewer instruments',      step:'Thinning the instruments',     text:'Down to one or two instruments.' },
+  calming_settle:         { color:'--p-deepen',  label:'Settle',                 step:'Composing the settle',         text:'Harmony moves less and dynamics even out.' },
+  spacious_calm:          { color:'--p-float',   label:'Spacious calm',          step:'Composing the spacious calm',  text:'More space and long sustained tones.' },
+  calming_fade_or_loop:   { color:'--p-fade',    label:'Fade',                   step:'Composing the ending',         text:'A slow fade to silence.',
+                            loop:{ label:'Loop', text:'An ending that flows straight back into the start.' } },
+  // depression, comfort mode: meets the mood, then comforts
+  acknowledge_heaviness:  { color:'--c-slate',      label:'Acknowledge heaviness',  step:'Composing the opening',     text:'Quiet and slow, meeting a heavy mood.' },
+  safety:                 { color:'--c-lilac',      label:'Safety',                 step:'Composing the safety',      text:'Warm chords and a soft, steady pulse.' },
+  warmth:                 { color:'--c-terracotta', label:'Warmth',                 step:'Composing the warmth',      text:'Warm strings or guitar join; the harmony opens.' },
+  calm:                   { color:'--c-green',      label:'Calm',                   step:'Composing the calm',        text:'Long sustained tones, then a slow fade.',
+                            loop:{ text:'Long sustained tones that flow back into the start.' } },
+  // depression, gentle activation: rises gradually, never jumps
+  stillness:              { color:'--c-slate',      label:'Stillness',              step:'Composing the stillness',   text:'Starting still, with minimal rhythm.' },
+  comfort:                { color:'--c-lilac',      label:'Comfort',                step:'Composing the comfort',     text:'A gentle pulse begins.' },
+  engagement:             { color:'--c-rose',       label:'Engagement',             step:'Composing the engagement',  text:'A clearer pulse and more melodic movement.' },
+  subtle_positive_energy: { color:'--c-apricot',    label:'Subtle positive energy', step:'Composing the ending',      text:'A steady, gentle energy, then a slow fade.' },
+  // depression, relaxation
+  tension:                { color:'--c-apricot',    label:'Tension',                step:'Composing the opening',     text:'Starting where the listener is.' },
+  relaxation_calm:        { color:'--c-slate',      label:'Calm',                   step:'Composing the calm',        text:'Rhythm and density begin to ease.' },
+  spaciousness:           { color:'--c-teal',       label:'Spaciousness',           step:'Composing the spaciousness',text:'More space and fewer notes.' },
+  deep_relaxation:        { color:'--c-indigo',     label:'Deep relaxation',        step:'Composing the ending',      text:'Long sustained tones, then a slow fade.' },
+  // depression, sleep preparation
+  emotional_fatigue:      { color:'--c-terracotta', label:'Emotional fatigue',      step:'Composing the opening',     text:'Slow and gentle, meeting tiredness.' },
+  sleep_safety:           { color:'--c-lilac',      label:'Safety',                 step:'Composing the safety',      text:'Warm, stable harmony.' },
+  sleep_calm:             { color:'--c-moss',       label:'Calm',                   step:'Composing the calm',        text:'Calm, sustained tones.' },
+  low_stimulation:        { color:'--c-teal',       label:'Low stimulation',        step:'Composing the stillness',   text:'Very little movement.' },
+  sleep_readiness:        { color:'--c-indigo',     label:'Sleep readiness',        step:'Composing the ending',      text:'Sustained tones that loop back to the start.' },
 };
 
 /* ── helpers ─────────────────────────────────────── */
@@ -751,7 +1183,7 @@ const base = name => String(name || '').replace(/_\d+$/, '');   // settle_2 -> s
 const phaseColor = name => css((PHASES[base(name)] || PHASES.settle).color);
 const phaseInfo = (name, ending) => {
   const ph = PHASES[base(name)] || PHASES.settle;
-  return ending === 'loop' && ph.loop ? { ...ph, ...ph.loop } : ph;
+  return ending && ph[ending] ? { ...ph, ...ph[ending] } : ph;   // e.g. fade_or_loop's loop label
 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = matchMedia('(pointer: fine)').matches;
@@ -778,8 +1210,8 @@ function titleOf(request){
   if (t.length > 80) t = t.slice(0, 77).replace(/\s+\S*$/, '') + '…';
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
-// guided and pain relief requests are built by this page and summed up by their title
-const isGuided = request => /^A \d+ min (?:pain relief )?session\b/.test(String(request || ''));
+// guided and care module requests are built by this page and summed up by their title
+const isGuided = request => /^A \d+ min (?:pain relief |dementia care |depression support )?session\b/.test(String(request || ''));
 // everything after a built request's first sentence is the notes typed with it
 const notesOf = request => String(request || '').replace(/^[^.!?\n]*[.!?]\s*/, '').replace(/\.$/, '').trim();
 
@@ -792,12 +1224,21 @@ const state = {
   instr:['bowls'], instrOwn:false, instrText:'',
   notes:'', own:'',
   pain:{ ...PAIN_DEFAULTS },
+  dementia:{ ...DM_DEFAULTS },
+  depression:{ ...DP_DEFAULTS },
 };
 try { Object.assign(state, JSON.parse(localStorage.getItem('resonalife:prefs') || '{}')); } catch {}
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 if (!Array.isArray(state.instr)) state.instr = [];
-state.pain = { ...PAIN_DEFAULTS, ...(state.pain && typeof state.pain === 'object' ? state.pain : {}) };
+state.pain = { ...PAIN_DEFAULTS, ...(isObj(state.pain) ? state.pain : {}) };
 if (!Array.isArray(state.pain.fixes)) state.pain.fixes = [];
-if (!['guided', 'own', 'pain'].includes(state.mode)) state.mode = 'guided';
+state.dementia = { ...DM_DEFAULTS, ...(isObj(state.dementia) ? state.dementia : {}) };
+state.depression = { ...DP_DEFAULTS, ...(isObj(state.depression) ? state.depression : {}) };
+[state.dementia, state.depression].forEach(s => {
+  if (!Array.isArray(s.fixes)) s.fixes = [];
+  if (!isObj(s.profile)) s.profile = {};
+});
+if (!['guided', 'own', 'pain', 'dementia', 'depression'].includes(state.mode)) state.mode = 'guided';
 const save = () => { try { localStorage.setItem('resonalife:prefs', JSON.stringify(state)); } catch {} };
 
 let pollTimer = null, tickTimer = null, breathTimer = null, startedAt = 0;
@@ -808,16 +1249,19 @@ const LEDES = {
   guided: 'Choose a goal and a length. Your session starts where you are and slowly brings you there.',
   own:    'Describe the session in your own words. Say how you feel now, how you want to feel, and how long it should be.',
   pain:   'Designed to support relaxation and comfort for someone in pain. It starts calm and only ever gets calmer.',
+  dementia:   'Designed to feel familiar, safe and easy to follow for someone living with dementia. Every change is gradual.',
+  depression: 'Designed to meet the listener’s mood, then shift gently toward comfort, calm or gentle energy. Never forced cheer.',
 };
+// each mode's switch button and panel
+const MODE_UI = { guided:['modeGuided', 'panelGuided'], own:['modeOwn', 'panelOwn'], pain:['modePain', 'panelPain'],
+                  dementia:['modeDementia', 'panelDementia'], depression:['modeDepression', 'panelDepression'] };
 
 function setMode(mode){
   state.mode = mode; save();
-  $('modeGuided').setAttribute('aria-pressed', mode === 'guided');
-  $('modeOwn').setAttribute('aria-pressed', mode === 'own');
-  $('modePain').setAttribute('aria-pressed', mode === 'pain');
-  $('panelGuided').hidden = mode !== 'guided';
-  $('panelOwn').hidden = mode !== 'own';
-  $('panelPain').hidden = mode !== 'pain';
+  Object.entries(MODE_UI).forEach(([m, [btn, panel]]) => {
+    $(btn).setAttribute('aria-pressed', m === mode);
+    $(panel).hidden = m !== mode;
+  });
   $('dock').hidden = mode === 'own';
   $('lede').textContent = LEDES[mode];
   if (mode === 'own') { autosize(); renderOwnHint(); }
@@ -918,10 +1362,12 @@ function guidedProblem(){
 
 function renderSummary(){
   const s = $('summary');
-  const pain = state.mode === 'pain';
-  const problem = pain ? painProblem() : guidedProblem();
+  const pain = state.mode === 'pain', dm = state.mode === 'dementia', dp = state.mode === 'depression';
+  const problem = pain ? painProblem() : dm ? dmProblem() : dp ? dpProblem() : guidedProblem();
   $('minWarn').hidden = !state.minCustom || minutesValid();
   $('painMinWarn').hidden = !state.pain.minCustom || painMinutesValid();
+  $('dmMinWarn').hidden = !state.dementia.minCustom || careMinutesValid(state.dementia);
+  $('dpMinWarn').hidden = !state.depression.minCustom || careMinutesValid(state.depression);
   $('create').disabled = !!problem;
   s.textContent = '';
   if (problem) { s.textContent = problem; return; }
@@ -929,6 +1375,12 @@ function renderSummary(){
     const em = document.createElement('em');
     em.textContent = `${state.pain.min}-minute pain relief session`;
     s.append('A ', em, `, ${painSummary()}.`);
+    return;
+  }
+  if (dm || dp) {
+    const em = document.createElement('em');
+    em.textContent = dm ? `${state.dementia.min}-minute dementia care session` : `${state.depression.min}-minute depression support session`;
+    s.append('A ', em, `, ${dm ? dmSummary(dmEffective()) : dpSummary(dpEffective())}.`);
     return;
   }
   const sounds = soundsList();
@@ -1053,24 +1505,431 @@ function loadPainOptions(o, request){
 // "58 BPM · Soft piano + pads · Very sparse melody · ..." for the behind-the-scenes panels
 function showSettings(el, job){
   const o = (job.result && job.result.settings) || job.options;
-  el.hidden = job.mode !== 'pain_relief' || !o;
+  el.hidden = !CARE_MODES.includes(job.mode) || !o;
   el.textContent = '';
   if (el.hidden) return;
   const name = (list, id) => (list.find(x => x.id === id) || {}).name;
-  const lead = leadText(o);
-  const parts = [
-    `${o.bpm} BPM`,
-    lead.charAt(0).toUpperCase() + lead.slice(1) + (o.warm_piano ? ', warmer piano' : ''),
-    o.melody === 'none' ? 'no melody' : 'very sparse melody',
-    o.nature && o.nature !== 'off' ? name(PAIN_NATURE, o.nature).toLowerCase() : 'no nature texture',
-    o.ending === 'loop' ? 'seamless loop' : 'fades to silence',
-  ];
+  let parts, fixList = PAIN_FIXES, spec = null;
+  if (job.mode === 'dementia') {
+    parts = dmSettingsParts(o); fixList = DM_FIXES; spec = DM_PROFILE;
+  } else if (job.mode === 'depression') {
+    parts = dpSettingsParts(o); fixList = DP_FIXES; spec = DP_PROFILE;
+  } else {
+    const lead = leadText(o);
+    parts = [
+      `${o.bpm} BPM`,
+      lead.charAt(0).toUpperCase() + lead.slice(1) + (o.warm_piano ? ', warmer piano' : ''),
+      o.melody === 'none' ? 'no melody' : 'very sparse melody',
+      o.nature && o.nature !== 'off' ? name(PAIN_NATURE, o.nature).toLowerCase() : 'no nature texture',
+      o.ending === 'loop' ? 'seamless loop' : 'fades to silence',
+    ];
+  }
+  const line = (label, text) => el.append(document.createElement('br'), Object.assign(document.createElement('b'), { textContent:label }), text);
   const b = document.createElement('b'); b.textContent = 'Settings: ';
   el.append(b, parts.join(' · '));
-  const fixes = (o.fixes || []).map(f => name(PAIN_FIXES, f)).filter(Boolean);
-  if (fixes.length) el.append(document.createElement('br'), Object.assign(document.createElement('b'), { textContent:'Fixes: ' }), fixes.join(', '));
+  const fixes = (o.fixes || []).map(f => name(fixList, f)).filter(Boolean);
+  if (fixes.length) line('Fixes: ', fixes.join(', '));
+  if (spec && isObj(o.profile)) {
+    const filled = spec.filter(f => o.profile[f.id] && String(o.profile[f.id]).length)
+      .map(f => `${f.label}: ${[].concat(o.profile[f.id]).join(', ')}`);
+    if (filled.length) line('Listener profile: ', filled.join(' · '));
+  }
   const notes = notesOf(job.request);
-  if (notes) el.append(document.createElement('br'), Object.assign(document.createElement('b'), { textContent:'Notes: ' }), notes);
+  if (notes) line('Notes: ', notes);
+}
+
+/* ── dementia and depression: shared pieces ──────── */
+const careMinutesValid = s => Number.isInteger(s.min) && s.min >= DM_MIN && s.min <= DM_MAX;
+const careProblem = s => careMinutesValid(s) ? null : `Choose a length between ${DM_MIN} and ${DM_MAX} minutes.`;
+const within = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+const fixWord = n => n === 1 ? '1 fix' : `${n} fixes`;
+
+// the length chips, as on the pain relief panel
+function lengthChips(el, lengths, s, inputId, rerender){
+  el.innerHTML = '';
+  lengths.forEach(m => el.append(button('chip', m + ' min', !s.minCustom && m === s.min, () => {
+    s.min = m; s.minCustom = false; save(); rerender();
+  })));
+  el.append(button('chip own', 'Custom', s.minCustom, () => {
+    s.minCustom = true;
+    if (!$(inputId).value) $(inputId).value = s.min;
+    s.min = parseInt($(inputId).value, 10) || 0;
+    save(); rerender(); $(inputId).focus(); $(inputId).select();
+  }));
+}
+
+// the fix chips a session can use, and how many are on
+function fixChips(el, countEl, fixes, s, allowed, rerender){
+  el.innerHTML = '';
+  fixes.filter(allowed).forEach(f => {
+    const on = s.fixes.includes(f.id);
+    el.append(button('chip', f.name, on, () => {
+      s.fixes = on ? s.fixes.filter(x => x !== f.id) : [...s.fixes, f.id];
+      save(); rerender();
+    }));
+  });
+  const n = s.fixes.filter(id => { const f = fixes.find(x => x.id === id); return f && allowed(f); }).length;
+  countEl.textContent = n ? `· ${n} on` : '';
+}
+
+// The listener profile: text fields are built once, so typing never loses focus;
+// the chip rows re-render. Values live in s.profile, keyed like the server's.
+function buildProfile(el, spec, prefix, s, changed){
+  el.innerHTML = '';
+  spec.forEach(f => {
+    const wrap = document.createElement(f.chips ? 'div' : 'label');
+    wrap.className = 'pf' + (f.half ? '' : ' wide');
+    const label = document.createElement('span');
+    label.id = `${prefix}-${f.id}-label`;
+    label.textContent = f.label;
+    wrap.append(label);
+    if (f.chips) {
+      const row = document.createElement('div');
+      row.className = 'chips'; row.id = `${prefix}-${f.id}`;
+      row.setAttribute('role', 'group'); row.setAttribute('aria-labelledby', label.id);
+      wrap.append(row);
+    } else {
+      const input = document.createElement(f.area ? 'textarea' : 'input');
+      input.className = f.area ? 'notes' : 'field';
+      input.id = `${prefix}-${f.id}`;
+      if (!f.area) input.type = 'text';
+      input.maxLength = f.area ? 400 : 120;
+      input.placeholder = f.placeholder || '';
+      input.oninput = () => { s().profile[f.id] = input.value; save(); changed(); };
+      wrap.append(input);
+    }
+    el.append(wrap);
+  });
+  syncProfile(spec, prefix, s().profile);
+}
+function syncProfile(spec, prefix, profile){
+  spec.filter(f => !f.chips).forEach(f => { $(`${prefix}-${f.id}`).value = typeof profile[f.id] === 'string' ? profile[f.id] : ''; });
+}
+function profileChips(spec, prefix, profile, rerender){
+  spec.filter(f => f.chips).forEach(f => {
+    const row = $(`${prefix}-${f.id}`); row.innerHTML = '';
+    const picked = Array.isArray(profile[f.id]) ? profile[f.id] : [];
+    f.chips.forEach(v => {
+      const on = picked.includes(v);
+      row.append(button('chip', v.charAt(0).toUpperCase() + v.slice(1), on, () => {
+        profile[f.id] = on ? picked.filter(x => x !== v) : [...picked, v];
+        save(); rerender();
+      }));
+    });
+  });
+}
+const filled = v => Array.isArray(v) ? v.length > 0 : !!clean(v);
+const profileCount = (spec, profile) => spec.filter(f => filled(profile[f.id])).length;
+// what was filled in, as the server takes it
+function profileOptions(spec, profile){
+  const out = {};
+  spec.forEach(f => { const v = profile[f.id]; if (filled(v)) out[f.id] = Array.isArray(v) ? [...v] : clean(v); });
+  return out;
+}
+function loadProfile(spec, s, raw){
+  s.profile = {};
+  if (!isObj(raw)) return;
+  spec.forEach(f => {
+    const v = raw[f.id];
+    if (f.chips) {
+      const list = Array.isArray(v) ? v : typeof v === 'string' ? v.split(/,\s*/) : [];
+      s.profile[f.id] = list.filter(x => f.chips.includes(x));
+    } else if (typeof v === 'string' || typeof v === 'number') {
+      s.profile[f.id] = String(v);
+    }
+  });
+}
+
+/* ── dementia ────────────────────────────────────── */
+// the tempo range for the session (pipeline.dementia_bpm_range): 50–75 by default,
+// the Session mode's and Time of day's own ranges when they have one
+function dmRange(d){
+  const keys = [d.mode, d.time].filter(k => DM_BPM_BY[k]);
+  if (!keys.length) return DM_BPM_DEFAULT;
+  let [lo, hi] = DM_BPM;
+  keys.forEach(k => { lo = Math.max(lo, DM_BPM_BY[k][0]); hi = Math.min(hi, DM_BPM_BY[k][1]); });
+  return [lo, hi];
+}
+const dmEndings = d => d.time === 'presleep' ? ['loop'] : d.mode === 'calming' ? ['fade', 'loop'] : ['close', 'fade', 'loop'];
+// "Off for calming, evening and pre-sleep"; and it's one of the instruments, so it stays
+// out when no more than two play at a time
+const dmPercussionQuiet = d => d.mode === 'calming' || d.time === 'evening' || d.time === 'presleep';
+const dmTwoAtOnce = d => d.density === 'fewer' || d.fixes.includes('busy');
+const dmPercussionOff = d => dmPercussionQuiet(d) || dmTwoAtOnce(d);
+const dmFixAllowed = (f, mode, percussion) => (!f.calming || mode === 'calming') && (!f.percussion || percussion === 'light');
+
+// what the session uses: the choices as made, kept inside what the mode and time allow
+function dmEffective(d = state.dementia){
+  const [lo, hi] = dmRange(d);
+  const endings = dmEndings(d);
+  const percussion = dmPercussionOff(d) ? 'off' : d.percussion;
+  return {
+    ...d,
+    bpm: within(d.bpm, lo, hi),
+    ending: endings.includes(d.ending) ? d.ending : endings[0],
+    percussion,
+    fixes: d.fixes.filter(id => { const f = DM_FIXES.find(x => x.id === id); return f && dmFixAllowed(f, d.mode, percussion); }),
+  };
+}
+
+function renderDementia(){
+  const d = state.dementia, e = dmEffective();
+  const set = (key, v) => { d[key] = v; save(); renderDementia(); };
+
+  lengthChips($('dmLengths'), DM_LENGTHS, d, 'dmMinText', renderDementia);
+  $('dmMinRow').hidden = !d.minCustom;
+
+  const modes = $('dmModes'); modes.innerHTML = '';
+  DM_MODES.forEach(m => modes.append(button('goal', m.name, d.mode === m.id, () => set('mode', m.id), m.hint)));
+  $('dmModeNote').hidden = d.mode !== 'reminiscence' || profileCount(DM_PROFILE, d.profile) > 0;
+
+  // the tailoring table: "loop for evening and pre-sleep"
+  chipGroup($('dmTimes'), DM_TIMES, d.time, v => { if (v === 'evening') d.ending = 'loop'; set('time', v); });
+
+  const allowed = dmEndings(d);
+  const endings = $('dmEndings'); endings.innerHTML = '';
+  DM_ENDINGS.filter(x => allowed.includes(x.id))
+    .forEach(x => endings.append(button('goal', x.name, e.ending === x.id, () => set('ending', x.id), x.hint)));
+  $('dmEndingNote').hidden = allowed.length === DM_ENDINGS.length;
+  $('dmEndingNote').textContent = d.time === 'presleep'
+    ? 'Pre-sleep sessions end in a seamless loop instead of an ending.'
+    : 'The calming arc ends with a slow fade to silence or a seamless loop.';
+
+  chipGroup($('dmDensity'), DM_DENSITY, d.density, v => set('density', v));
+  chipGroup($('dmMelody'), DM_MELODY, d.melody, v => set('melody', v));
+  const percOff = dmPercussionOff(d);
+  $('dmPercussion').hidden = percOff;
+  $('dmPercNote').textContent = dmPercussionQuiet(d) ? 'off for calming, evening and pre-sleep'
+    : percOff ? 'off with no more than two instruments at a time' : 'off if the person startles';
+  chipGroup($('dmPercussion'), DM_PERCUSSION, d.percussion, v => set('percussion', v));
+  chipGroup($('dmVoice'), DM_VOICE, d.voice, v => set('voice', v));
+
+  const [lo, hi] = dmRange(d);
+  chipGroup($('dmTempos'), DM_TEMPOS.filter(b => b >= lo && b <= hi).map(b => ({ id:b, name:b + ' BPM' })), e.bpm, v => set('bpm', v));
+
+  profileChips(DM_PROFILE, 'dmp', d.profile, renderDementia);
+  const n = profileCount(DM_PROFILE, d.profile);
+  $('dmProfileCount').textContent = n ? `· ${n} filled` : '';
+
+  fixChips($('dmFixes'), $('dmFixCount'), DM_FIXES, d, f => dmFixAllowed(f, d.mode, e.percussion), renderDementia);
+  renderSummary();
+}
+
+const dmProblem = () => careProblem(state.dementia);
+
+// "calming mode, for the evening, 60 BPM, fading to silence, 1 fix"
+function dmSummary(o){
+  const parts = [];
+  if (o.mode !== 'default') parts.push(`${o.mode} mode`);
+  if (o.time !== 'none') parts.push(TIME_WORDS[o.time]);
+  parts.push(`${o.bpm} BPM`, END_WORDS[o.ending]);
+  if (o.fixes.length) parts.push(fixWord(o.fixes.length));
+  return parts.join(', ');
+}
+
+// "N min" must come first: titleOf and the server both read the first "<number> min"
+function buildDmRequest(){
+  const o = dmEffective();
+  let r = `A ${o.min} min dementia care session${o.mode !== 'default' ? ` in ${o.mode} mode` : ''}`
+        + `${o.time !== 'none' ? `, ${TIME_WORDS[o.time]}` : ''}, ${END_WORDS[o.ending]}.`;
+  const notes = clean(o.notes);
+  if (notes) r += ' ' + notes + '.';
+  return r;
+}
+
+function dmOptions(){
+  const o = dmEffective();
+  return {
+    minutes:o.min, session_mode:o.mode, time_of_day:o.time, bpm:o.bpm, ending:o.ending,
+    density:o.density, melody:o.melody, percussion:o.percussion, voice:o.voice,
+    familiar_instrument:clean(o.familiar), profile:profileOptions(DM_PROFILE, o.profile), fixes:[...o.fixes],
+  };
+}
+
+// put a finished session's settings back in the panel, to regenerate it with a fix
+function loadDmOptions(o, request){
+  const d = state.dementia;
+  const has = (list, id) => list.some(x => x.id === id);
+  if (Number.isInteger(o.minutes)) {
+    d.min = o.minutes; d.minCustom = !DM_LENGTHS.includes(o.minutes);
+    $('dmMinText').value = d.minCustom ? o.minutes : '';
+  }
+  if (has(DM_MODES, o.session_mode)) d.mode = o.session_mode;
+  if (has(DM_TIMES, o.time_of_day)) d.time = o.time_of_day;
+  if (Number.isInteger(o.bpm)) d.bpm = o.bpm;
+  if (has(DM_ENDINGS, o.ending)) d.ending = o.ending;
+  if (has(DM_DENSITY, o.density)) d.density = o.density;
+  if (has(DM_MELODY, o.melody)) d.melody = o.melody;
+  if (has(DM_PERCUSSION, o.percussion)) d.percussion = o.percussion;
+  if (has(DM_VOICE, o.voice)) d.voice = o.voice;
+  d.familiar = typeof o.familiar_instrument === 'string' ? o.familiar_instrument : '';
+  $('dmFamiliar').value = d.familiar;
+  loadProfile(DM_PROFILE, d, o.profile);
+  syncProfile(DM_PROFILE, 'dmp', d.profile);
+  d.fixes = (Array.isArray(o.fixes) ? o.fixes : []).filter(f => has(DM_FIXES, f));
+  d.notes = notesOf(request);
+  $('dmNotes').value = d.notes;
+  save();
+}
+
+// "65 BPM · Default mode · two or three instruments · ..." for the behind-the-scenes panels
+function dmSettingsParts(o){
+  const parts = [`${o.bpm} BPM`, `${(DM_MODES.find(x => x.id === o.session_mode) || DM_MODES[0]).name} mode`];
+  if (o.time_of_day && o.time_of_day !== 'none') parts.push(TIME_NAMES[o.time_of_day].toLowerCase());
+  parts.push(o.density === 'fewer' ? 'no more than two instruments' : 'two or three instruments',
+             o.melody === 'simpler' ? 'simpler melody' : 'short, gently repeated phrases',
+             o.percussion === 'light' ? 'light percussion' : 'no percussion',
+             o.voice === 'wordless' ? 'soft wordless voice' : 'instrumental');
+  if (o.familiar_instrument) parts.push(`featuring the ${o.familiar_instrument}`);
+  parts.push(END_NAMES[o.ending] || '');
+  return parts.filter(Boolean);
+}
+
+/* ── depression ──────────────────────────────────── */
+const dpFixAllowed = (f, mode, percussion) => (!f.activation || mode === 'activation') && (!f.percussion || percussion === 'light')
+  && (!f.modes || f.modes.includes(mode));
+// Daytime's "within 65–80 BPM" and Gentle activation's "begin at 50–65" meet at 65
+const dpStartTempos = time => time === 'daytime' ? DP_TEMPOS.filter(b => b >= 65) : DP_TEMPOS;
+
+// what the session uses (pipeline.depression_settings): each mode's own times,
+// endings and adjustments, and a fix outranks the setting it corrects
+function dpEffective(d = state.depression){
+  const activation = d.mode === 'activation';
+  const endings = DP_ENDINGS_BY[d.mode] || DP_ENDINGS_BY.comfort;
+  const percussion = activation ? d.percussion : 'off';
+  const fixes = d.fixes.filter(id => { const f = DP_FIXES.find(x => x.id === id); return f && dpFixAllowed(f, d.mode, percussion); });
+  const time = (DP_TIMES[d.mode] || []).includes(d.time) ? d.time : 'none';
+  const starts = dpStartTempos(time);
+  return {
+    ...d,
+    time,
+    bpm: starts.includes(d.bpm) ? d.bpm : within(d.bpm, starts[0], starts[starts.length - 1]),
+    ending: endings.includes(d.ending) ? d.ending : endings[0],
+    bpmEnd: activation ? d.bpmEnd : null,
+    harmony: d.mode === 'comfort' && !fixes.includes('minor') ? d.harmony : 'warm',
+    brightness: activation && !fixes.includes('bright') ? d.brightness : 'warm',
+    percussion,
+    sparser: activation ? false : !!d.sparser,
+    fixes,
+  };
+}
+
+function renderDepression(){
+  const d = state.depression, e = dpEffective();
+  const set = (key, v) => { d[key] = v; save(); renderDepression(); };
+  const activation = d.mode === 'activation';
+
+  lengthChips($('dpLengths'), DP_LENGTHS, d, 'dpMinText', renderDepression);
+  $('dpMinRow').hidden = !d.minCustom;
+
+  const modes = $('dpModes'); modes.innerHTML = '';
+  DP_MODES.forEach(m => modes.append(button('goal', m.name, d.mode === m.id, () => set('mode', m.id), m.hint)));
+
+  const times = DP_TIMES[d.mode] || [];
+  $('dpTimeRow').hidden = !times.length;
+  chipGroup($('dpTimes'), ['none', ...times].map(id => ({ id, name:TIME_NAMES[id] })), e.time, v => set('time', v));
+
+  chipGroup($('dpEnergy'), DP_ENERGY, d.energy, v => set('energy', v));
+
+  const allowed = DP_ENDINGS_BY[d.mode] || [];
+  const endings = $('dpEndings'); endings.innerHTML = '';
+  DP_ENDINGS.filter(x => allowed.includes(x.id))
+    .forEach(x => endings.append(button('goal', x.name, e.ending === x.id, () => set('ending', x.id), x.hint)));
+  $('dpEndingNote').hidden = !DP_ENDING_NOTES[d.mode];
+  $('dpEndingNote').textContent = DP_ENDING_NOTES[d.mode] || '';
+
+  $('dpHarmonyRow').hidden = d.mode !== 'comfort';
+  chipGroup($('dpHarmony'), DP_HARMONY, e.harmony, v => set('harmony', v));
+  $('dpBrightRow').hidden = !activation;
+  chipGroup($('dpBrightness'), DP_BRIGHTNESS, e.brightness, v => set('brightness', v));
+  $('dpPercRow').hidden = !activation;
+  chipGroup($('dpPercussion'), DP_PERCUSSION, d.percussion, v => set('percussion', v));
+  $('dpSparseRow').hidden = activation;
+  $('lblDpSparse').classList.toggle('later', d.mode === 'comfort');   // under the harmony row
+  chipGroup($('dpSparse'), DP_SPARSE, !!d.sparser, v => set('sparser', v));
+
+  $('lblDpStart').hidden = !activation;
+  $('dpEndRow').hidden = !activation;
+  chipGroup($('dpTempos'), dpStartTempos(e.time).map(b => ({ id:b, name:b + ' BPM' })), e.bpm, v => set('bpm', v));
+  $('dpTempoNote').hidden = e.time !== 'daytime';
+  chipGroup($('dpTemposEnd'), DP_TEMPOS_END.map(b => ({ id:b, name:b + ' BPM' })), d.bpmEnd, v => set('bpmEnd', v));
+
+  profileChips(DP_PROFILE, 'dpp', d.profile, renderDepression);
+  const n = profileCount(DP_PROFILE, d.profile);
+  $('dpProfileCount').textContent = n ? `· ${n} filled` : '';
+
+  fixChips($('dpFixes'), $('dpFixCount'), DP_FIXES, d, f => dpFixAllowed(f, d.mode, e.percussion), renderDepression);
+  renderSummary();
+}
+
+const dpProblem = () => careProblem(state.depression);
+const dpModeWords = mode => (DP_MODES.find(x => x.id === mode) || DP_MODES[0]).name.toLowerCase();
+
+// "gentle activation mode, for the morning, 58 rising to 70 BPM, fading to silence"
+function dpSummary(o){
+  const parts = [`${dpModeWords(o.mode)} mode`];
+  if (o.time !== 'none') parts.push(TIME_WORDS[o.time]);
+  parts.push(o.bpmEnd ? `${o.bpm} rising to ${o.bpmEnd} BPM` : `${o.bpm} BPM`, END_WORDS[o.ending]);
+  if (o.fixes.length) parts.push(fixWord(o.fixes.length));
+  return parts.join(', ');
+}
+
+function buildDpRequest(){
+  const o = dpEffective();
+  let r = `A ${o.min} min depression support session in ${dpModeWords(o.mode)} mode`
+        + `${o.time !== 'none' ? `, ${TIME_WORDS[o.time]}` : ''}, ${END_WORDS[o.ending]}.`;
+  const notes = clean(o.notes);
+  if (notes) r += ' ' + notes + '.';
+  return r;
+}
+
+function dpOptions(){
+  const o = dpEffective();
+  const opts = {
+    minutes:o.min, session_mode:o.mode, time_of_day:o.time, bpm:o.bpm, ending:o.ending, energy:o.energy,
+    harmony:o.harmony, brightness:o.brightness, percussion:o.percussion, sparser:o.sparser,
+    profile:profileOptions(DP_PROFILE, o.profile), fixes:[...o.fixes],
+  };
+  if (o.bpmEnd) opts.bpm_end = o.bpmEnd;
+  return opts;
+}
+
+function loadDpOptions(o, request){
+  const d = state.depression;
+  const has = (list, id) => list.some(x => x.id === id);
+  if (Number.isInteger(o.minutes)) {
+    d.min = o.minutes; d.minCustom = !DP_LENGTHS.includes(o.minutes);
+    $('dpMinText').value = d.minCustom ? o.minutes : '';
+  }
+  if (has(DP_MODES, o.session_mode)) d.mode = o.session_mode;
+  if (TIME_NAMES[o.time_of_day]) d.time = o.time_of_day;
+  if (Number.isInteger(o.bpm)) d.bpm = o.bpm;
+  if (Number.isInteger(o.bpm_end)) d.bpmEnd = o.bpm_end;
+  if (has(DP_ENDINGS, o.ending)) d.ending = o.ending;
+  if (has(DP_ENERGY, o.energy)) d.energy = o.energy;
+  if (has(DP_HARMONY, o.harmony)) d.harmony = o.harmony;
+  if (has(DP_BRIGHTNESS, o.brightness)) d.brightness = o.brightness;
+  if (has(DP_PERCUSSION, o.percussion)) d.percussion = o.percussion;
+  d.sparser = o.sparser === true;
+  loadProfile(DP_PROFILE, d, o.profile);
+  syncProfile(DP_PROFILE, 'dpp', d.profile);
+  d.fixes = (Array.isArray(o.fixes) ? o.fixes : []).filter(f => has(DP_FIXES, f));
+  d.notes = notesOf(request);
+  $('dpNotes').value = d.notes;
+  save();
+}
+
+function dpSettingsParts(o){
+  const name = (list, id) => (list.find(x => x.id === id) || {}).name;
+  const parts = [o.bpm_end ? `${o.bpm} rising to ${o.bpm_end} BPM` : `${o.bpm} BPM`, `${name(DP_MODES, o.session_mode) || 'Comfort'} mode`];
+  if (o.time_of_day && o.time_of_day !== 'none') parts.push(TIME_NAMES[o.time_of_day].toLowerCase());
+  parts.push(`${(name(DP_ENERGY, o.energy) || 'low').toLowerCase()} energy`);
+  if (o.harmony === 'resonance') parts.push('a little more minor color');
+  if (o.brightness === 'brighter') parts.push('slightly brighter');
+  if (o.percussion === 'light') parts.push('light percussion');
+  if (o.sparser) parts.push('sparser');
+  parts.push(END_NAMES[o.ending] || '');
+  return parts.filter(Boolean);
 }
 
 /* ── write your own ──────────────────────────────── */
@@ -1277,6 +2136,15 @@ function nameAt(job, i){
   return i === 0 ? 'match' : i === 1 ? 'transition' : 'settle';
 }
 
+// phases in the job's arc, for the ring before the server has planned the segments
+function arcLength(job){
+  const mode = (job.options || {}).session_mode;
+  if (job.mode === 'pain_relief') return 6;
+  if (job.mode === 'dementia') return mode === 'calming' ? 6 : 5;
+  if (job.mode === 'depression') return mode === 'sleep' ? 5 : 4;
+  return 3;
+}
+
 function waiting(job){
   if (!$('sLoading').classList.contains('on')) {
     show('sLoading');
@@ -1294,7 +2162,7 @@ function waiting(job){
   const ending = job.options && job.options.ending;
 
   const p = job.progress;
-  const total = job.plan ? job.plan.length : p ? p.total : job.mode === 'pain_relief' ? 6 : 3;
+  const total = job.plan ? job.plan.length : p ? p.total : arcLength(job);
   const gap = total > 1 ? 6 : 0, span = 360 / total;
   const svg = $('ring');
   svg.innerHTML = '';
@@ -1368,13 +2236,13 @@ let peaks = [], bounds = [], sessionTitle = '';
 
 function listen(job){
   const r = job.result;
-  const pain = (r.mode || job.mode) === 'pain_relief';
+  const care = CARE_MODES.includes(r.mode || job.mode);
   const ending = r.ending || null;
   shownJob = job;
   show('sDone');
   sessionTitle = titleOf(job.request);
   $('doneTitle').textContent = sessionTitle;
-  $('doneSub').textContent = pain
+  $('doneSub').textContent = care
     ? 'Listen through once yourself before playing it for someone.'
     : 'Ready to listen. Headphones or a good speaker help.';
   showWords($('doneWords'), job.request);
@@ -1401,8 +2269,8 @@ function listen(job){
   $('loopCheck').hidden = !r.loop_check_url;
   $('loopNote').hidden = ending !== 'loop';
   if (r.loop_check_url) $('loopAudio').src = r.loop_check_url; else $('loopAudio').removeAttribute('src');
-  $('reviewBox').hidden = !pain;
-  if (pain) renderChecklist(job);
+  $('reviewBox').hidden = !care;
+  if (care) renderChecklist(job);
 
   const a = $('audio');
   a.loop = ending === 'loop';
@@ -1489,12 +2357,14 @@ function stopAudio(){
   const l = $('loopAudio'); l.pause(); l.removeAttribute('src'); l.load();
 }
 
-/* ── pain relief review ──────────────────────────── */
-// the guideline's checklist; ticks aren't saved, each new session starts unticked
+/* ── review before playing ───────────────────────── */
+// the module's checklist; ticks aren't saved, each new session starts unticked
 function renderChecklist(job){
+  const mode = job.result.mode || job.mode;
   const o = (job.result && job.result.settings) || job.options || {};
   const ending = job.result.ending || o.ending || 'fade';
-  const items = CHECKLIST.filter(c => (!c.nature || (o.nature && o.nature !== 'off')) && (!c.ending || c.ending === ending));
+  const items = (CHECKLISTS[mode] || CHECKLIST)
+    .filter(c => (!c.nature || (o.nature && o.nature !== 'off')) && (!c.ending || [].concat(c.ending).includes(ending)));
   const ul = $('checks'); ul.innerHTML = '';
   items.forEach(c => {
     const li = document.createElement('li');
@@ -1504,6 +2374,20 @@ function renderChecklist(job){
     box.onchange = updateCheckState;
     label.append(box, span); li.append(label); ul.append(li);
   });
+  // dementia and depression go on to the guideline's quality check
+  const q = QUALITY[mode];
+  $('quality').hidden = !q;
+  $('watchNote').hidden = !q;
+  if (q) {
+    $('qualityLead').textContent = q.lead;
+    const list = $('qualityList'); list.innerHTML = '';
+    q.items.forEach(([dim, ask]) => {
+      const li = document.createElement('li');
+      li.append(Object.assign(document.createElement('b'), { textContent:dim + ': ' }), ask);
+      list.append(li);
+    });
+    $('watchNote').textContent = q.watch;
+  }
   $('reviewBox').open = true;
   updateCheckState();
 }
@@ -1533,6 +2417,8 @@ function fail(request, message, log){
 $('modeGuided').onclick = () => setMode('guided');
 $('modeOwn').onclick = () => { setMode('own'); $('own').focus(); };
 $('modePain').onclick = () => setMode('pain');
+$('modeDementia').onclick = () => setMode('dementia');
+$('modeDepression').onclick = () => setMode('depression');
 
 $('goalText').value = state.goalText;
 $('natureText').value = state.natureText;
@@ -1542,6 +2428,13 @@ $('own').value = state.own;
 if (state.minCustom) $('minText').value = state.min;
 $('painNotes').value = state.pain.notes;
 if (state.pain.minCustom) $('painMinText').value = state.pain.min;
+$('dmNotes').value = state.dementia.notes;
+$('dmFamiliar').value = state.dementia.familiar;
+if (state.dementia.minCustom) $('dmMinText').value = state.dementia.min;
+$('dpNotes').value = state.depression.notes;
+if (state.depression.minCustom) $('dpMinText').value = state.depression.min;
+buildProfile($('dmProfile'), DM_PROFILE, 'dmp', () => state.dementia, renderDementia);
+buildProfile($('dpProfile'), DP_PROFILE, 'dpp', () => state.depression, renderDepression);
 
 $('goalText').oninput = e => { state.goalText = e.target.value; save(); renderSummary(); };
 $('natureText').oninput = e => { state.natureText = e.target.value; save(); renderSummary(); };
@@ -1560,9 +2453,24 @@ $('painMinText').oninput = e => {
   save(); renderSummary();
 };
 
+$('dmNotes').oninput = e => { state.dementia.notes = e.target.value; save(); };
+$('dmFamiliar').oninput = e => { state.dementia.familiar = e.target.value; save(); };
+$('dpNotes').oninput = e => { state.depression.notes = e.target.value; save(); };
+[['dmMinText', 'dementia'], ['dpMinText', 'depression']].forEach(([id, key]) => {
+  $(id).oninput = e => {
+    const v = Number(e.target.value);
+    state[key].min = Number.isInteger(v) ? v : 0;
+    save(); renderSummary();
+  };
+});
+
 $('create').onclick = () => {
   if (state.mode === 'pain') {
     if (!painProblem()) submit(buildPainRequest(), seedValue(), 'pain_relief', painOptions());
+  } else if (state.mode === 'dementia') {
+    if (!dmProblem()) submit(buildDmRequest(), seedValue(), 'dementia', dmOptions());
+  } else if (state.mode === 'depression') {
+    if (!dpProblem()) submit(buildDpRequest(), seedValue(), 'depression', dpOptions());
   } else if (!guidedProblem()) {
     submit(buildGuidedRequest(), seedValue());
   }
@@ -1580,20 +2488,25 @@ $('send').onclick = () => {
   if (text) submit(text, seedValue());
 };
 
-['notes', 'painNotes'].forEach(id => $(id).addEventListener('keydown', e => {
+['notes', 'painNotes', 'dmNotes', 'dpNotes'].forEach(id => $(id).addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('create').click(); }
 }));
 
 $('retry').onclick = () => { if (lastRequest) submit(lastRequest, lastSeed ?? null, lastMode, lastOptions); };
 
-// back to the pain relief panel with this session's settings, fixes open
+// back to the module's panel with this session's settings, fixes open
 $('fixRegen').onclick = () => {
-  if (shownJob && shownJob.options) loadPainOptions(shownJob.options, shownJob.request);
+  const job = shownJob || {};
+  const [mode, box, load, render] = {
+    dementia:   ['dementia', 'dmFixBox', loadDmOptions, renderDementia],
+    depression: ['depression', 'dpFixBox', loadDpOptions, renderDepression],
+  }[job.mode] || ['pain', 'fixBox', loadPainOptions, renderPain];
+  if (job.options) load(job.options, job.request);
   toCompose();
-  setMode('pain');
-  renderPain();
-  $('fixBox').open = true;
-  requestAnimationFrame(() => $('fixBox').scrollIntoView({ block:'start', behavior: reducedMotion ? 'auto' : 'smooth' }));
+  setMode(mode);
+  render();
+  $(box).open = true;
+  requestAnimationFrame(() => $(box).scrollIntoView({ block:'start', behavior: reducedMotion ? 'auto' : 'smooth' }));
 };
 
 $('loopCheck').onclick = () => {
@@ -1645,6 +2558,8 @@ window.addEventListener('resize', () => {
 
 renderChoices();
 renderPain();
+renderDementia();
+renderDepression();
 renderIdeas();
 setMode(state.mode);
 health();

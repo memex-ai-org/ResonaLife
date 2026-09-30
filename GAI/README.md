@@ -36,7 +36,7 @@ GAI/
 ├── modal_app.py          the Modal app: what you run and deploy
 ├── train_lora_modal.py   LoRA training, a separate Modal app (see Training a LoRA)
 ├── pipeline.py           orchestration, generation, post-processing
-├── config.py             model ids, generation and EQ settings, pain relief arc
+├── config.py             model ids, generation and EQ settings, the guideline modules' arcs
 ├── static/index.html     the page
 ├── data/                 training audio and captions, used only by training
 ├── stable-audio-3-main/  Stability's stable-audio-3 repo, copied into the GPU image
@@ -100,7 +100,9 @@ the password is the one from step 3.
 |---|---|
 | Choose settings | Guided ISO session: pick a goal, a length and sounds |
 | Write your own | ISO session from free text. The length is the first "N min" in the text; default 15, max 120 |
-| Pain relief | The hospice guideline's six-phase comfort arc (see [Pain relief mode](#pain-relief-mode)) |
+| Pain relief | The hospice guideline's Module 1: a six-phase comfort arc (see [Pain relief mode](#pain-relief-mode)) |
+| Dementia | Module 2: familiar, simple and safe music, with a Calming mode (see [Dementia mode](#dementia-mode)) |
+| Depression | Module 3: meets the mood first, then comforts or gently lifts (see [Depression mode](#depression-mode)) |
 
 - **Cold start:** after a quiet spell, the first session shows "Getting the
   studio ready" for a minute or two while a GPU starts and loads Stable Audio 3.
@@ -161,7 +163,7 @@ between visits.
 
 ## Session modes
 
-Both modes share the same rendering, stitching, EQ and preview code. Each
+Every mode shares the same rendering, stitching, EQ and preview code. Each
 model call continues from the last 30 s of the one before it (inpainting), so
 the whole session plays as one continuous piece.
 
@@ -240,6 +242,142 @@ normalization, so they don't change the level of the rest of the session.
 The finished session shows the guideline's review checklist and a **Fix and
 regenerate** button, which reopens the settings with the fix list open.
 
+### Guideline modules: what they share
+
+Dementia and depression are built the same way as pain relief:
+
+- **The arc.** Each session mode has its own phases and shares, from the
+  guideline's session arc tables (`config.DEMENTIA_ARCS`,
+  `config.DEPRESSION_ARCS`). No phase is clamped, and a 30-min session lands on
+  the guideline's phase times.
+- **The prompts.** The module's master prompt is its system prompt
+  (`DEMENTIA_SYSTEM_PROMPT`, `DEPRESSION_SYSTEM_PROMPT`). The settings, the
+  guideline lines they switch on (Session mode, Time of day, add-ons, fixes) and
+  the listener profile go in the user message, as the guideline says to add
+  them to the bottom of the prompt. Qwen writes what the music does in each
+  phase; the code sets the tags, the tempo and which instruments play in each
+  phase, and removes BPMs and phrases that name an avoided sound or mood.
+- **The Avoid list** goes in as positive wording (`DEMENTIA_GUARDRAIL`,
+  `DEPRESSION_GUARDRAIL`), like pain relief's.
+- **Listener profile.** The page has the guideline's profile fields in a fold-out
+  section. Only filled fields are sent, and they shape the style, never the
+  safety rules.
+- **Endings** work as in pain relief: a fade covers the last 10% of the session
+  (`FADE_SHARE`), and a loop folds the last 8 s into the start and adds
+  `loop_check.mp3`.
+- **Review.** The finished session shows the module's checklist, then its
+  quality check and what to watch for while it plays.
+
+These two modules are drafts in the guideline: their prompts haven't been
+tested yet. Listen to the first sessions closely.
+
+### Dementia mode
+
+Module 2: familiar, simple and emotionally safe music that supports comfort,
+calm, orientation and gentle engagement. The default arc moves from familiar to
+comfortable to gently engaging, then settles. Calming mode (anxiety, agitation
+or restlessness) reduces stimulation step by step.
+
+| Default arc | Share | 30 min | Calming mode | Share | 30 min |
+|---|---|---|---|---|---|
+| Familiar | 15% | 0–4.5 | Steady and familiar | 15% | 0–4.5 |
+| Safe | 15% | 4.5–9 | Simplify rhythm | 15% | 4.5–9 |
+| Comfortable | 25% | 9–16.5 | Fewer instruments | 20% | 9–15 |
+| Engaging | 30% | 16.5–25.5 | Settle | 20% | 15–21 |
+| Emotionally supportive | 15% | 25.5–30 | Spacious calm | 20% | 21–27 |
+| | | | Fade or loop | 10% | 27–30 |
+
+Reminiscence and Social mode use the default arc; their lines change the style.
+
+**Instruments.** Qwen picks two or three from the guideline's list (soft piano,
+acoustic guitar, warm strings, gentle woodwinds, warm pads) to suit the
+listener's era and culture. A familiar instrument from the page always comes
+first. The code then decides who plays: light acoustic percussion joins only in
+Engaging, taking the place of a third instrument, one instrument drops out in
+Emotionally supportive, and Calming mode reduces to the first two from Fewer
+instruments on, with piano or guitar carrying the pulse. Percussion counts as
+an instrument, so with no more than two at a time it stays out. The wordless
+voice is a texture and plays throughout.
+
+**Tempo** stays constant. The guideline lets the calming arc "slow or
+stabilize"; a steady tempo is the safer reading, since "tempo drifts or
+changes" is one of its listed problems.
+
+| Setting | `options` key | Values | Default |
+|---|---|---|---|
+| Length | `minutes` | 10–60 | `30` |
+| Session mode | `session_mode` | `default`, `calming`, `reminiscence`, `social` | `default` |
+| Time of day | `time_of_day` | `none`, `morning`, `afternoon`, `evening`, `presleep` | `none` |
+| Tempo | `bpm` | 50–75 by default; 45–65 for calming, evening and pre-sleep; 60–80 for social and morning | `65` |
+| Ending | `ending` | `close` (soft, resolved phrase), `fade`, `loop` | `close`; `loop` in the evening |
+| Instruments at once | `density` | `usual` (two or three), `fewer` (no more than two) | `usual` |
+| Melody | `melody` | `short`, `simpler` | `short` |
+| Percussion | `percussion` | `light`, `off` (always off for calming, evening, pre-sleep and two instruments at a time) | `light` |
+| Voice texture | `voice` | `off`, `wordless` | `off` |
+| Familiar instrument | `familiar_instrument` | one instrument name, e.g. `erhu` | none |
+| Listener profile | `profile` | `age`, `culture`, `preferred_music`, `favorites`, `era`, `memories`, `state`, `activity`, `outcome`, `sensitivity`, `environment` | none |
+| Fixes | `fixes` | `unfamiliar`, `busy`, `wanders`, `monotonous`, `percussion`, `loud`, `tempo`, `sad`, `lyrics`, `song`, `unsettled` | none |
+
+Calming mode ends with a fade or a loop, and pre-sleep always loops ("a
+seamless loop instead of an ending"). Evening switches to the loop ("loop for
+evening and pre-sleep") and can be changed back. The soft close ends on a
+resolved phrase with an 8 s tail (`CLOSE_FADE_S`) so it never cuts off. With the wordless voice
+on, the prompts leave out `VocalType: Instrumental`.
+
+### Depression mode
+
+Module 3: music that meets a low mood where it is, then supports comfort,
+relaxation or gentle engagement. It never opens bright to lift a low mood and
+never forces a happy ending.
+
+| Session mode | Phases (share) | Ending |
+|---|---|---|
+| Comfort (default) | Acknowledge heaviness 20% → Safety 25% → Warmth 30% → Calm 25% | fade or loop |
+| Gentle activation | Stillness 20% → Comfort 25% → Engagement 30% → Subtle positive energy 25% | fade |
+| Relaxation | Tension 15% → Calm 25% → Spaciousness 30% → Deep relaxation 30% | fade |
+| Sleep preparation | Emotional fatigue 10% → Safety 20% → Calm 25% → Low stimulation 25% → Sleep readiness 20% | loop |
+
+**Instruments** come from the arc text. Soft piano and warm pads play
+throughout ("sparse piano or pads"); one more instrument joins at Warmth in
+Comfort mode ("warm strings or guitar join"), at Comfort in Gentle activation
+(guitar, marimba or woodwinds), and in Relaxation it leaves after Calm (guitar,
+strings or woodwinds). Qwen picks which one from the listener profile. Sleep
+preparation keeps pads, piano and strings throughout. Light percussion plays
+only in Gentle activation's last two phases; it's on by default there, because
+that mode's own line adds it. "Natural acoustic textures" from the guideline's
+list is left out: the audio model tends to answer it with field recordings.
+
+**Tempo.** Constant, except in Gentle activation, where it rises in even steps
+from `bpm` to `bpm_end`, one step per phase (58 → 62 → 66 → 70 by default).
+With Daytime, whose line asks for 65–80 BPM, the session starts at 65, the one
+tempo that also fits the activation line's "begin at 50–65".
+
+| Setting | `options` key | Values | Default |
+|---|---|---|---|
+| Length | `minutes` | 10–60 | `30` |
+| Session mode | `session_mode` | `comfort`, `activation`, `relaxation`, `sleep` | `comfort` |
+| Time of day | `time_of_day` | `none`; `morning` or `daytime` (activation), `evening` (relaxation), `presleep` (sleep) | `none` |
+| Tempo | `bpm` | 50–65 (where Gentle activation starts; 65 with Daytime) | `58` |
+| Tempo reached | `bpm_end` | 65–80, Gentle activation only | `70` |
+| Energy level | `energy` | `low`, `moderate`, `higher` | `low` |
+| Harmony color | `harmony` | `warm`, `resonance` (Comfort only) | `warm` |
+| Brightness | `brightness` | `warm`, `brighter` (Gentle activation only) | `warm` |
+| Percussion | `percussion` | `off`, `light` (Gentle activation only) | `light` in Gentle activation, otherwise `off` |
+| Sparser | `sparser` | `true`, `false` (not in Gentle activation) | `false` |
+| Listener profile | `profile` | `age`, `culture`, `genres`, `artists`, `background`, `state`, `activity`, `outcome`, `environment`, `sensitivity` | none |
+| Fixes | `fixes` | `heavy`, `cheerful`, `rises`, `never_lifts`, `minor`, `bright`, `percussion`, `melody`, `lyrics` | none |
+
+A setting that doesn't belong to the session mode is left out with a warning
+in the log, and a fix outranks the setting it corrects: "Minor key dominates"
+turns off `resonance`, "Sound is harsh or too bright" turns off `brighter` and
+the morning line's brighter timbres. "Energy rises too fast" is offered in
+Comfort and Gentle activation only, since energy only falls in the other modes.
+
+Three choices go beyond the guideline's tables. Gentle activation only fades: a
+loop would drop from its steady energy straight back to stillness. Sparser is
+left out of Gentle activation, where the pulse is meant to grow clearer. The end
+tempo defaults to 70 BPM, since the guideline gives a range but no default.
+
 ## API
 
 Every route sits behind the same login, so scripts pass it with `-u`:
@@ -260,12 +398,29 @@ curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
   $URL/generate
 # -> {"job_id": "…", "position": 1}
 
+# dementia session
+curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
+  -d '{"request": "A 30 min dementia care session in calming mode, for the evening, fading to silence.",
+       "mode": "dementia",
+       "options": {"minutes": 30, "session_mode": "calming", "time_of_day": "evening", "bpm": 60,
+                   "ending": "fade", "familiar_instrument": "erhu",
+                   "profile": {"age": "84", "era": "1960s", "state": ["anxious"]}}}' \
+  $URL/generate
+
+# depression session
+curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
+  -d '{"request": "A 30 min depression support session in gentle activation mode, fading to silence.",
+       "mode": "depression",
+       "options": {"minutes": 30, "session_mode": "activation", "bpm": 58, "bpm_end": 70,
+                   "energy": "low", "percussion": "light"}}' \
+  $URL/generate
+
 curl -u resonalife:$PASSWORD $URL/jobs/<job_id>
 ```
 
 | Route | Returns |
 |---|---|
-| `POST /generate` | `job_id` and queue position. Body: `request`, optional `seed`, `mode` (`iso` or `pain_relief`), `options` |
+| `POST /generate` | `job_id` and queue position. Body: `request`, optional `seed`, `mode` (`iso`, `pain_relief`, `dementia` or `depression`), `options` |
 | `GET /jobs/{id}` | `status` (queued, running, done or error), `progress`, `plan`, `log`, and once done a `result` |
 | `GET /jobs` | The latest 50 jobs, summary only |
 | `GET /audio/{folder}/{file}` | A session file |
@@ -275,7 +430,7 @@ When a job is done, its `result` holds:
 
 - `audio_url` (MP3 preview), `download_url` (studio WAV) and `raw_url` (unprocessed render)
 - `loop_check_url` (loop endings only)
-- `prompts`, `segments` and, for pain relief, the `settings` actually used
+- `prompts`, `segments` and, for the guideline modules, the `settings` actually used
 
 ## Training a LoRA
 
@@ -383,8 +538,9 @@ These live in `config.py`; deploy after changing them.
   a per-product decision, not a pipeline default.
 - **Generation:** `STEPS` (8, the tuned default for medium), `CTX_S` (30 s of
   context between calls) and `MAX_MODEL_DURATION_S` (360 s per call).
-- **Pain relief:** `PAIN_*` holds the arc shares, the safe ranges, the
-  defaults and the loop crossfade length.
+- **Guideline modules:** `PAIN_*`, `DEMENTIA_*` and `DEPRESSION_*` hold the arc
+  shares, the safe ranges and the defaults. `FADE_SHARE`, `CLOSE_FADE_S`,
+  `LOOP_CROSSFADE_S` and `LOOP_CHECK_S` set the endings for all three.
 
 ## Troubleshooting
 
@@ -401,6 +557,9 @@ These live in `config.py`; deploy after changing them.
   the traceback.
 - **An audio link 404s right after a session finishes.** Refresh the page.
   The web container picks up new files from the volume on demand.
+- **The log notes a prompt "runs past ~190 words".** The text encoder reads
+  about that much, so the end of a long prompt, where the Avoid wording sits,
+  may be cut. It happens when many fixes are on at once; regenerate with fewer.
 
 ## Running locally (optional)
 

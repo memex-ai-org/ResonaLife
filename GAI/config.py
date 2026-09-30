@@ -46,13 +46,17 @@ CTX_S = 30.0                  # seconds of the previous phase used as conditioni
 DEFAULT_TOTAL_S = 15 * 60     # fallback if no duration is mentioned in the request
 SPLIT = (0.25, 0.35, 0.40)    # match, transition, settle
 
-# ---------- pain relief mode ----------
-# Functional Music Guideline — Hospice & Chronic Illness, Module 1 (Pain Relief).
+# ---------- guideline modules ----------
+# Functional Music Guideline — Hospice & Chronic Illness. Each module's session
+# arc is a list of (phase, share of the session). The shares are the guideline's
+# session arc tables; every phase is chunked across as many model calls as it
+# needs, so the shares hold at any length. Phase names are also the prompt keys,
+# the segment file names and the phase ids the page colours by, so they are
+# unique across every arc.
+
+# ---------- Module 1: pain relief ----------
 # Unlike match/transition/settle this arc never opens with energy to "meet" the
-# listener: it starts calm and only ever gets calmer. Shares are the guideline's
-# session arc table; every phase is chunked across as many model calls as it
-# needs, so the shares hold at any length. The names are also the prompt keys,
-# the segment file names and the phase ids the page colours by.
+# listener: it starts calm and only ever gets calmer.
 PAIN_ARC = (
     ('immediate_calm',     0.10),   # enters softly at the slow tempo, no build-up
     ('release_tension',    0.15),   # harmony settles further, phrases lengthen
@@ -61,7 +65,6 @@ PAIN_ARC = (
     ('weightless_plateau', 0.25),   # pads and sustained tones float
     ('fade_or_loop',       0.10),   # fade to silence, or continue and loop
 )
-assert abs(sum(share for _, share in PAIN_ARC) - 1.0) < 1e-9, 'PAIN_ARC shares must add up to 1'
 
 # guideline "Tailoring a session" safe ranges — requests outside them are pulled back in
 PAIN_MINUTES = (10, 60)
@@ -69,8 +72,89 @@ PAIN_DEFAULT_MINUTES = 30
 PAIN_BPM = (50, 65)
 PAIN_DEFAULT_BPM = 58
 
-PAIN_LOOP_CROSSFADE_S = 8.0   # loop ending: tail folded into the start so the file repeats with no click or gap
-PAIN_LOOP_CHECK_S = 10.0      # loop ending: seconds either side of the join in loop_check.mp3
+# ---------- Module 2: dementia ----------
+# Default arc: familiar -> comfortable -> gently engaging, then settles. Calming
+# mode (anxiety, agitation or restlessness) reduces stimulation step by step.
+# Reminiscence and Social mode change the style, not the arc, so they use the default.
+DEMENTIA_ARCS = {
+    'default': (
+        ('familiar',               0.15),   # a simple, familiar-sounding phrase; nothing new or surprising
+        ('safe',                   0.15),   # warm, consonant harmony, even volume; the carrying pattern is set up
+        ('comfortable',            0.25),   # stable and predictable; phrases return with subtle variation
+        ('engaging',               0.30),   # clear, memorable phrases invite humming or tapping along
+        ('emotionally_supportive', 0.15),   # instruments thin out, the pace eases; a soft close or slow fade
+    ),
+    'calming': (
+        ('steady_and_familiar',  0.15),     # steady tempo, simple familiar melody, few instruments
+        ('simplify_rhythm',      0.15),     # rhythmic complexity drops; piano or guitar carries the pulse
+        ('fewer_instruments',    0.20),     # down to one or two instruments; phrases repeat more often
+        ('calming_settle',       0.20),     # tempo stabilizes, harmony moves less, dynamics even out
+        ('spacious_calm',        0.20),     # more space, long sustained tones, one short repeated phrase
+        ('calming_fade_or_loop', 0.10),     # slow fade to silence, or a seamless loop
+    ),
+}
+DEMENTIA_MINUTES = (10, 60)
+DEMENTIA_DEFAULT_MINUTES = 30
+DEMENTIA_BPM = (45, 80)                 # the safe range, across every mode and time of day
+DEMENTIA_DEFAULT_BPM_RANGE = (50, 75)   # "50–75 BPM by default", when no line below sets its own
+DEMENTIA_DEFAULT_BPM = 65
+# the ranges a Session mode or Time of day line sets; both apply when both are set
+DEMENTIA_BPM_BY = {
+    'calming':  (45, 65),
+    'evening':  (45, 65),
+    'presleep': (45, 65),
+    'social':   (60, 80),
+    'morning':  (60, 80),
+}
+
+# ---------- Module 3: depression ----------
+# Starts where the listener is and only then moves; never forces a happy ending.
+# Comfort is the default mode; each Session mode line switches the arc.
+DEPRESSION_ARCS = {
+    'comfort': (
+        ('acknowledge_heaviness', 0.20),    # quiet, slow, a little subdued: sparse piano or pads
+        ('safety',                0.25),    # warm, consonant chords; a soft, steady pulse
+        ('warmth',                0.30),    # warm strings or guitar join; harmony opens gently
+        ('calm',                  0.25),    # density eases back into long sustained tones
+    ),
+    'activation': (
+        ('stillness',              0.20),   # minimal rhythm at the starting tempo
+        ('comfort',                0.25),   # a gentle pulse begins
+        ('engagement',             0.30),   # clearer pulse, more melodic movement
+        ('subtle_positive_energy', 0.25),   # ends at a steady, gentle energy
+    ),
+    'relaxation': (
+        ('tension',         0.15),          # meets restlessness with some rhythmic activity
+        ('relaxation_calm', 0.25),          # rhythm and density begin to reduce
+        ('spaciousness',    0.30),          # more space, fewer notes
+        ('deep_relaxation', 0.30),          # minimal rhythm, long tones, slow fade
+    ),
+    'sleep': (
+        ('emotional_fatigue', 0.10),        # slow and gentle, meeting tiredness
+        ('sleep_safety',      0.20),        # warm, stable harmony
+        ('sleep_calm',        0.25),        # calm, sustained tones
+        ('low_stimulation',   0.25),        # very little movement
+        ('sleep_readiness',   0.20),        # holds steady and loops back to the start
+    ),
+}
+DEPRESSION_MINUTES = (10, 60)
+DEPRESSION_DEFAULT_MINUTES = 30
+DEPRESSION_BPM = (50, 65)               # comfort, relaxation and sleep; where activation starts
+DEPRESSION_DEFAULT_BPM = 58
+DEPRESSION_ACTIVATION_BPM = (65, 80)    # where Gentle activation ends, reached gradually
+DEPRESSION_DEFAULT_ACTIVATION_BPM = 70
+
+for _arc in (PAIN_ARC, *DEMENTIA_ARCS.values(), *DEPRESSION_ARCS.values()):
+    assert abs(sum(share for _, share in _arc) - 1.0) < 1e-9, f'arc shares must add up to 1: {_arc}'
+_names = [name for _arc in (PAIN_ARC, *DEMENTIA_ARCS.values(), *DEPRESSION_ARCS.values()) for name, _ in _arc]
+assert len(_names) == len(set(_names)) and not {'match', 'transition', 'settle'} & set(_names), \
+    'phase names must be unique across all arcs'
+
+# ---------- endings (all modules) ----------
+FADE_SHARE = 0.10         # fade: the last 10% of the session fades to exact silence (pain relief's Fade or loop phase)
+CLOSE_FADE_S = 8.0        # dementia soft close: a short tail after the resolved phrase, so it never cuts off
+LOOP_CROSSFADE_S = 8.0    # loop: tail folded into the start so the file repeats with no click or gap
+LOOP_CHECK_S = 10.0       # loop: seconds either side of the join in loop_check.mp3
 
 # ---------- post EQ ----------
 POST_EQ = dict(

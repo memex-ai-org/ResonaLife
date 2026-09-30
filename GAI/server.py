@@ -8,7 +8,18 @@ POST /generate {"request": "...", "seed": null}                       ISO sessio
 POST /generate {"request": "...", "mode": "pain_relief", "options": {...}}
     options: minutes 10-60, bpm 50-65, ending fade|loop, lead piano|strings|pads,
     melody sparse|none, warm_piano bool, nature off|wind|waves, fixes [...]
-    (see pipeline.pain_relief_settings; anything missing takes the guideline default)
+POST /generate {"request": "...", "mode": "dementia", "options": {...}}
+    options: minutes 10-60, session_mode default|calming|reminiscence|social,
+    time_of_day none|morning|afternoon|evening|presleep, bpm 45-80, ending close|fade|loop,
+    density usual|fewer, melody short|simpler, percussion light|off, voice off|wordless,
+    familiar_instrument "...", profile {...}, fixes [...]
+POST /generate {"request": "...", "mode": "depression", "options": {...}}
+    options: minutes 10-60, session_mode comfort|activation|relaxation|sleep,
+    time_of_day none|morning|daytime|evening|presleep, bpm 50-65, bpm_end 65-80,
+    ending fade|loop, energy low|moderate|higher, harmony warm|resonance,
+    brightness warm|brighter, percussion off|light, sparser bool, profile {...}, fixes [...]
+(see pipeline.pain_relief_settings, dementia_settings and depression_settings;
+anything missing takes the guideline default)
 """
 import queue
 import threading
@@ -48,8 +59,8 @@ MODEL_ERROR = None             # traceback string if loading failed
 class GenerateRequest(BaseModel):
     request: str
     seed: int | None = None
-    mode: Literal['iso', 'pain_relief'] = 'iso'
-    options: dict | None = None    # pain relief settings; validated by the pipeline
+    mode: Literal['iso', 'pain_relief', 'dementia', 'depression'] = 'iso'
+    options: dict | None = None    # a guideline module's settings; validated by the pipeline
 
 
 def result_for_page(result):
@@ -69,7 +80,7 @@ def result_for_page(result):
         # full-quality 24-bit deliverable
         'download_url': f'/audio/{folder}/completed_EQed.wav',
         'raw_url': f'/audio/{folder}/completed.wav',
-        # pain relief loop ending: the last and first seconds back to back
+        # loop endings: the last and first seconds back to back
         'loop_check_url': f'/audio/{folder}/{Path(loop_check).name}' if loop_check else None,
     }
 
@@ -154,7 +165,7 @@ def generate(req: GenerateRequest):
         'request': req.request.strip(),
         'seed': req.seed,
         'mode': req.mode,
-        'options': req.options if req.mode == 'pain_relief' else None,
+        'options': req.options if req.mode != 'iso' else None,
         'status': 'queued',
         'log': [],
         'progress': None,

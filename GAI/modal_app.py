@@ -4,9 +4,9 @@ Two containers behind one URL:
   web        CPU: serves static/ and the same HTTP API server.py had
   Generator  GPU: loads Stable Audio 3 once, renders one session at a time
 
-pipeline.py, config.py and static/index.html are used unchanged. Both session
-modes (ISO, and the guideline's six-phase pain relief arc) go through the same
-POST /generate — see server.py for the request body.
+pipeline.py, config.py and static/index.html are used unchanged. Every session
+mode (ISO, and the guideline's pain relief, dementia and depression modules) goes
+through the same POST /generate — see server.py for the request body.
 
 Run from the GAI folder (next to pipeline.py, config.py, static/, stable-audio-3-main/):
   python -m modal run modal_app.py       one-time: build image + download weights
@@ -204,8 +204,8 @@ def web():
     class GenerateRequest(BaseModel):
         request: str
         seed: int | None = None
-        mode: Literal['iso', 'pain_relief'] = 'iso'
-        options: dict | None = None    # pain relief settings; validated by the pipeline
+        mode: Literal['iso', 'pain_relief', 'dementia', 'depression'] = 'iso'
+        options: dict | None = None    # a guideline module's settings; validated by the pipeline
 
     def check_call(job):
         """If the GPU call died without updating the job (model load failed,
@@ -246,7 +246,7 @@ def web():
             'request': req.request.strip(),
             'seed': req.seed,
             'mode': req.mode,
-            'options': req.options if req.mode == 'pain_relief' else None,
+            'options': req.options if req.mode != 'iso' else None,
             'status': 'queued',
             'log': [],
             'progress': None,
@@ -274,7 +274,7 @@ def web():
             {
                 'id': j['id'],
                 'request': j['request'],
-                'mode': j.get('mode', 'iso'),     # jobs from before pain relief have no mode
+                'mode': j.get('mode', 'iso'),     # jobs from before the guideline modules have no mode
                 'status': j['status'],
                 'created_at': j['created_at'],
                 'result': {'duration_s': j['result']['duration_s']} if j['result'] else None,

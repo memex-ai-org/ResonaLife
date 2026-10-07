@@ -177,7 +177,11 @@ Three phases, split by `config.SPLIT`:
 | transition | 35% | One call, capped at 5 min |
 | settle | 40% | Chunked across as many calls as needed to fill the rest of the session |
 
-Qwen writes all three prompts from `ORCHESTRATOR_SYSTEM_PROMPT`.
+Qwen writes all three prompts from `ORCHESTRATOR_SYSTEM_PROMPT`. A reply that
+can't be used is sampled again, up to three times, and Qwen is told what was
+wrong. If none can, the session plays `ISO_FALLBACK_PROMPTS` (one calm palette,
+72 BPM down to no tempo) rather than failing. The log says so, because those
+prompts don't carry what the request asked for.
 
 ### Pain relief mode
 
@@ -210,6 +214,11 @@ all six prompts. The code also:
   in, so the guideline's Avoid list goes in as positive wording (`PAIN_GUARDRAIL`).
 - Adds the guideline's add-on and troubleshooting lines for the chosen
   settings (`PAIN_ADDONS`, `PAIN_FIXES`).
+- Never fails a session over a bad reply. A reply with a missing, too-short or
+  tagged phase is sampled again, up to three times, and Qwen is told what was
+  wrong. If none passes, the code keeps the reply with the most usable phases
+  and writes the others itself from `PAIN_PHASE_FALLBACK`, its own description
+  of each phase. The log names the phases it wrote.
 
 **Settings.** The page's tab covers the guideline's tailoring table, and the
 API takes the same settings as `options`. Anything outside the safe ranges is
@@ -259,6 +268,9 @@ Dementia and depression are built the same way as pain relief:
   phase, and removes BPMs and phrases that name an avoided sound or mood.
 - **The Avoid list** goes in as positive wording (`DEMENTIA_GUARDRAIL`,
   `DEPRESSION_GUARDRAIL`), like pain relief's.
+- **Bad replies** never fail a session, as in pain relief: a retry is told what
+  was wrong, and a phase still unusable after three tries comes from
+  `DEMENTIA_PHASE_FALLBACK` or `DEPRESSION_PHASE_FALLBACK`.
 - **Listener profile.** The page has the guideline's profile fields in a fold-out
   section. Only filled fields are sent, and they shape the style, never the
   safety rules.
@@ -560,6 +572,12 @@ These live in `config.py`; deploy after changing them.
 - **The log notes a prompt "runs past ~190 words".** The text encoder reads
   about that much, so the end of a long prompt, where the Avoid wording sits,
   may be cut. It happens when many fixes are on at once; regenerate with fewer.
+- **The log says "no … orchestrator reply passed in 3 attempts".** Each of
+  Qwen's replies had a phase the code couldn't use, so the phases named on the
+  next log line play the code's own description. The session is safe to play
+  but less tailored to the request. `python -m modal app logs resonalife-gai`
+  prints every rejected reply in full; if it keeps happening in one mode, that
+  mode's prompt needs work.
 
 ## Running locally (optional)
 

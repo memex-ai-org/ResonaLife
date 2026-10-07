@@ -175,31 +175,59 @@ def ask_qwen(user_message, system_prompt, max_new_tokens=900):
     return qwen_tokenizer.decode(out[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
 
 
-def generate_phase_prompts(session_request, attempts=3):
-    """Call Qwen until it returns valid {match, transition, settle} JSON, or give up.
+# What an ISO session plays if Qwen never returns three usable prompts: one calm
+# palette, the tempo descending from match to settle, in the format the system
+# prompt asks for. It cannot carry what the request asked for (a sound, a mood),
+# so the log says when it is used.
+ISO_FALLBACK_TAGS = ('Purpose: Relaxation, TrackType: Music, VocalType: Instrumental, Genre: Ambient, '
+                     'Genre: Neoclassical, Instruments: soft felt piano, warm ambient pads, gentle strings.')
+ISO_FALLBACK_PROMPTS = {
+    'match':      ISO_FALLBACK_TAGS + ' A gentle, steady pulse at 72 BPM: simple, repeating felt piano phrases in '
+                  'the middle register over warm sustained pads and soft strings, even dynamics, calm and unhurried.',
+    'transition': ISO_FALLBACK_TAGS + ' Slower, at 62 BPM: the felt piano thins to sparse, soft notes while the pads '
+                  'and strings hold longer chords, the pulse softens and the texture grows more spacious.',
+    'settle':     ISO_FALLBACK_TAGS + ' No discernible tempo: long, soft pad and string tones drift slowly with an '
+                  'occasional quiet felt piano note, still, spacious and deeply calm.',
+}
+
+
+def retry_message(message, problem):
+    """message again, saying what was wrong with the last reply. Told nothing, the
+    next sample tends to repeat that reply word for word."""
+    return (f'{message}\n\nYour previous reply could not be used: {problem}\n'
+            'Write the whole JSON object again with that put right.')
+
+
+def generate_phase_prompts(session_request, log=print, attempts=3):
+    """Call Qwen until it returns valid {match, transition, settle} JSON.
 
     Instruct models occasionally wrap JSON in prose or markdown fences, or drop
-    a key — retrying a couple of times is cheap and far more robust than
-    failing the whole session on one bad sample.
+    a key — another sample is cheap, and each retry is told what was wrong with
+    the last. A session is never lost to a bad reply: if none can be used, it
+    plays ISO_FALLBACK_PROMPTS.
     """
-    last_error = None
+    request = f'Session request: "{session_request}"'
+    message = request
     for attempt in range(1, attempts + 1):
-        reply = ask_qwen(f'Session request: "{session_request}"', ORCHESTRATOR_SYSTEM_PROMPT)
+        reply = ask_qwen(message, ORCHESTRATOR_SYSTEM_PROMPT)
         found = re.search(r'\{.*\}', reply, re.DOTALL)
-        if not found:
-            last_error = f'no JSON object in reply:\n{reply}'
-            continue
         try:
-            data = json.loads(found.group(0))
-        except json.JSONDecodeError as e:
-            last_error = f'malformed JSON ({e}):\n{found.group(0)}'
-            continue
-        missing = [k for k in ('match', 'transition', 'settle') if not data.get(k, '').strip()]
-        if missing:
-            last_error = f'missing key(s) {missing}:\n{reply}'
-            continue
-        return data
-    raise ValueError(f'orchestrator failed after {attempts} attempt(s): {last_error}')
+            if not found:
+                raise ValueError('there was no JSON object in it')
+            data = json.loads(found.group(0), strict=False)   # strict=False: a line break inside a string is fine
+            missing = [k for k in ('match', 'transition', 'settle')
+                       if not isinstance(data.get(k), str) or not data[k].strip()]
+            if missing:
+                raise ValueError(f'it had no text for {", ".join(missing)}')
+            return data
+        except (ValueError, RecursionError) as e:     # a JSONDecodeError is a ValueError
+            problem = f'its JSON was malformed ({e})' if isinstance(e, json.JSONDecodeError) else str(e)
+        log(f'orchestrator reply {attempt}/{attempts} rejected: {problem}')
+        print(f'rejected orchestrator reply {attempt}/{attempts}:\n{reply}', flush=True)
+        message = retry_message(request, problem)
+    log('warning: no orchestrator reply could be used, so this session plays the standard calm ISO prompts; '
+        'what the request asked for is not in them')
+    return dict(ISO_FALLBACK_PROMPTS)
 
 
 # ============================================================
@@ -216,6 +244,10 @@ def generate_phase_prompts(session_request, attempts=3):
 # fixes — tags, instruments, tempo, the ending, the add-on lines — and assembles
 # the Stable Audio 3 prompts, so those hold in every phase however the sample
 # comes out.
+#
+# A session never fails on a reply. One that can't be used is sampled again,
+# with what was wrong with it; after the last attempt the code writes any phase
+# that is still unusable itself, from the module's *_PHASE_FALLBACK descriptions.
 #
 # Post-trained Stable Audio 3 ignores negative_prompt (base checkpoints only),
 # so a module's "Avoid" list can only reach it as positive description.
@@ -381,28 +413,56 @@ def word_filter(*groups):
     return re.compile(r'\b(?:' + '|'.join(groups) + r')\b', re.IGNORECASE)
 
 
-def clean_phases(data, arc, avoided_by_phase):
+PHASE_MIN_WORDS = 8   # a phase with fewer words left says too little to compose from
+
+
+class UnusablePhases(ValueError):
+    """A reply with phases that can't be used. problems is {phase: what is wrong with
+    it}; the message names every one, so the next sample can be told what to fix."""
+
+    def __init__(self, problems):
+        super().__init__('; '.join(f'{name} {why}' for name, why in problems.items()))
+        self.problems = problems
+
+
+def clean_phases(data, arc, avoided_by_phase, fallback=None):
     """Every phase's text from one parsed reply, made safe for the audio model.
 
-    Raises ValueError for anything worth another sample (a missing or empty
-    phase, prompt tags in a phase). Returns (phases, notes for the log).
+    A phase can't be used if it is missing or empty, has prompt tags in it, or has
+    fewer than PHASE_MIN_WORDS words left once the clauses naming avoided sounds
+    are dropped. That raises UnusablePhases: worth another sample. Given fallback,
+    the module's own description of each phase, it doesn't raise: a phase that
+    can't be used takes its fallback text, and a note names it. Returns (phases,
+    notes for the log).
     """
     if not isinstance(data, dict):
-        raise ValueError('reply is not a JSON object')
-    phases, notes = {}, []
+        raise ValueError('it was not a JSON object')
+    phases, notes, problems = {}, [], {}
     for name, _ in arc:
         raw = data.get(name)
         if not isinstance(raw, str) or not raw.strip():
-            raise ValueError(f'missing phase {name!r}')
+            problems[name] = 'is missing'
+            continue
         if PROMPT_TAG.search(raw):
-            raise ValueError(f'{name} contains prompt tags, which the code adds itself')
-        text, dropped = audio_safe(raw, avoided_by_phase[name])
-        if len(text.split()) < 8:
-            raise ValueError(f'{name} is nearly empty once avoided sounds are removed: {raw!r}')
+            problems[name] = f'has prompt tags in it, which the code adds itself: {raw!r}'
+            continue
+        avoided = avoided_by_phase[name]
+        text, dropped = audio_safe(raw, avoided)
+        if len(text.split()) < PHASE_MIN_WORDS:
+            words = sorted({m.group(0).lower() for clause in dropped for m in avoided.finditer(clause)})
+            problems[name] = (f'says too little once its clauses naming {", ".join(words)} are dropped: {raw!r}'
+                              if dropped else
+                              f'is only {len(text.split())} words long, not 30 to 60: {raw!r}')
+            continue
         if dropped:
             notes.append(f'{name}: dropped {dropped}')
         phases[name] = text
-    return phases, notes
+    if problems and fallback is None:
+        raise UnusablePhases(problems)
+    if problems:
+        notes.append(f'written by the code, from its own description of the phase: {", ".join(problems)}')
+        phases.update((name, fallback[name]) for name in problems)
+    return {name: phases[name] for name, _ in arc}, notes
 
 
 def clean_purpose(value, allowed, default):
@@ -440,29 +500,44 @@ def clean_addition(value, avoided, notes):
 
 
 def orchestrate(user_message, system_prompt, clean, log, what, attempts=3):
-    """Call Qwen until one reply passes clean(data) -> (plan, notes), or give up.
+    """Call Qwen until one reply passes clean(data) -> (plan, notes). Always returns a plan.
 
     Instruct models occasionally wrap JSON in prose or markdown fences, drop a
-    key or name an avoided sound in every clause — another sample is cheap.
+    key, name an avoided sound in every clause or answer a phase with one short
+    phrase — another sample is cheap, and each retry is told what was wrong with
+    the last. A session is never lost to a bad reply: when none passes, the reply
+    with the most usable phases is kept and clean(data, repair=True) writes the
+    others from the module's fallback descriptions (all of them, if no reply
+    could be read at all).
     """
-    last_error = None
+    message, best, fewest = user_message, {}, None
     for attempt in range(1, attempts + 1):
-        reply = ask_qwen(user_message, system_prompt, max_new_tokens=1400)
+        reply = ask_qwen(message, system_prompt, max_new_tokens=1400)
         found = re.search(r'\{.*\}', reply, re.DOTALL)
-        if not found:
-            last_error = f'no JSON object in reply:\n{reply}'
-        else:
-            try:
-                plan, notes = clean(json.loads(found.group(0)))
-                for note in notes:
-                    log(f'orchestrator note — {note}')
-                return plan
-            except json.JSONDecodeError as e:
-                last_error = f'malformed JSON ({e}):\n{found.group(0)}'
-            except ValueError as e:
-                last_error = str(e)
-        log(f'orchestrator reply {attempt}/{attempts} rejected: {last_error.splitlines()[0]}')
-    raise ValueError(f'{what} orchestrator failed after {attempts} attempt(s): {last_error}')
+        data = None
+        try:
+            if not found:
+                raise ValueError('there was no JSON object in it')
+            data = json.loads(found.group(0), strict=False)   # strict=False: a line break inside a string is fine
+            plan, notes = clean(data)
+            for note in notes:
+                log(f'orchestrator note — {note}')
+            return plan
+        except UnusablePhases as e:
+            problem = str(e)
+            if fewest is None or len(e.problems) < fewest:
+                best, fewest = data, len(e.problems)
+        except (ValueError, RecursionError) as e:     # a JSONDecodeError is a ValueError
+            problem = f'its JSON was malformed ({e})' if isinstance(e, json.JSONDecodeError) else str(e)
+        log(f'orchestrator reply {attempt}/{attempts} rejected: {problem}')
+        print(f'rejected {what} orchestrator reply {attempt}/{attempts}:\n{reply}', flush=True)
+        message = retry_message(user_message, problem)
+    log(f'warning: no {what} orchestrator reply passed in {attempts} attempts; '
+        'the code writes the phases it could not use')
+    plan, notes = clean(best, repair=True)
+    for note in notes:
+        log(f'orchestrator note — {note}')
+    return plan
 
 
 def prompt_tags(purpose, genres, instruments, instrumental=True):
@@ -477,6 +552,13 @@ def prompt_tags(purpose, genres, instruments, instrumental=True):
 def json_skeleton(fields, arc):
     """The reply shape shown to Qwen: fixed fields, then one key per phase."""
     return '{' + ', '.join(fields + [f'"{name}": "..."' for name, _ in arc]) + '}'
+
+
+# The line above the skeleton, the last thing Qwen reads. It repeats the length because
+# a reply can otherwise answer each phase with one short phrase, in the manner of the
+# system prompt's examples ("sparse piano notes over a soft pad").
+REPLY_INSTRUCTION = ('Respond with ONLY this JSON object. Every phase is its own full paragraph of '
+                     '30 to 60 words, never a single short phrase:')
 
 
 # ============================================================
@@ -611,6 +693,30 @@ PAIN_ENDINGS = {
 PAIN_GUARDRAIL = ('beatless, soft attacks, smooth warm highs, gentle lows, '
                   'warm consonant harmony, intensity steady or falling')
 
+# What a phase plays when no reply of Qwen's gives it usable text (see orchestrate):
+# the session arc from the system prompt, in the positive wording the phases are
+# written in. Only pads and sustained tones are named, since every Lead has them.
+PAIN_PHASE_FALLBACK = {
+    'immediate_calm':
+        'The music enters softly at the slow tempo: warm sustained tones and gentle pads in the middle register, '
+        'each chord held for several seconds, with soft attacks, quiet dynamics and wide space between the phrases.',
+    'release_tension':
+        'The harmony settles further into warm, consonant chords. Phrases lengthen and overlap gently, the '
+        'sustained tones are held longer, and the volume eases down slightly while the pads stay soft, low and even.',
+    'comfort_and_safety':
+        'A stable, repeating pattern of slow chords returns unchanged each time, the most held and predictable '
+        'part of the piece: the same warm sustained tones in the same middle register, at one soft, even level.',
+    'deepen_relaxation':
+        'Fewer notes, more space and silence. Long tones in a lower register are held and left to fade, the '
+        'timbre grows softer and more muted, and each slow chord arrives well after the last has settled.',
+    'weightless_plateau':
+        'Pads and sustained tones float almost without movement: very long, soft chords overlap and drift slowly, '
+        'any moving line thins to an occasional single tone, and the texture stays weightless, quiet and wide.',
+    'fade_or_loop':
+        'The floating plateau continues unresolved at the same slow pace: the same long, soft pad chords and '
+        'sustained tones, held at one quiet, even level with the same weightless, spacious texture.',
+}
+
 PAIN_PURPOSES = ('Relaxation', 'Rest', 'Sleep', 'Meditation')
 PAIN_GENRES = ('Ambient', 'Neoclassical', 'New Age', 'Contemporary Classical', 'Minimalism')
 
@@ -716,14 +822,17 @@ def pain_relief_user_message(session_request, settings, instruments, guideline_l
     return '\n'.join(lines)
 
 
-def clean_pain_relief_plan(data, instruments):
+def clean_pain_relief_plan(data, instruments, repair=False):
     """Validate one parsed orchestrator reply and make it safe for the audio model.
 
-    Raises ValueError for anything worth another sample (a missing or empty phase,
-    prompt tags in a phase). Optional fields fall back to safe defaults instead.
-    Returns (plan, notes) — notes say what was dropped, for the log.
+    Raises ValueError for anything worth another sample (a missing, empty or
+    too-short phase, prompt tags in a phase). With repair nothing raises: such a
+    phase takes its PAIN_PHASE_FALLBACK text. Optional fields fall back to safe
+    defaults either way. Returns (plan, notes) — notes say what was dropped or
+    replaced, for the log.
     """
-    phases, notes = clean_phases(data, config.PAIN_ARC, {name: AVOIDED_SOUNDS for name, _ in config.PAIN_ARC})
+    phases, notes = clean_phases(data, config.PAIN_ARC, {name: AVOIDED_SOUNDS for name, _ in config.PAIN_ARC},
+                                 PAIN_PHASE_FALLBACK if repair else None)
 
     purpose = clean_purpose(data.get('purpose'), PAIN_PURPOSES, 'Relaxation')
 
@@ -759,10 +868,11 @@ def clean_pain_relief_plan(data, instruments):
 
 
 def generate_pain_relief_plan(session_request, settings, instruments, guideline_lines, log, attempts=3):
-    """Call Qwen until one reply passes clean_pain_relief_plan, or give up."""
+    """Call Qwen until one reply passes clean_pain_relief_plan. If none does, orchestrate
+    has the best one repaired, so there is always a plan."""
     user_message = pain_relief_user_message(session_request, settings, instruments, guideline_lines)
     return orchestrate(user_message, PAIN_RELIEF_SYSTEM_PROMPT,
-                       lambda data: clean_pain_relief_plan(data, instruments),
+                       lambda data, repair=False: clean_pain_relief_plan(data, instruments, repair),
                        log, 'pain relief', attempts)
 
 
@@ -895,6 +1005,50 @@ DEMENTIA_PHASE_TEXT = {
     'calming_settle':         'The tempo stabilizes; harmony moves less; dynamics even out.',
     'spacious_calm':          'More space and long sustained tones; the melody reduces to a short, repeated phrase.',
     'calming_fade_or_loop':   'The spacious calm continues.',
+}
+# What a phase plays when no reply of Qwen's gives it usable text (see orchestrate):
+# the lines above in the positive wording the phases are written in. No instrument
+# is named, because the palette is chosen for the listener, and nothing here says
+# how the piece ends: DEMENTIA_ENDINGS adds that to the last phase.
+DEMENTIA_PHASE_FALLBACK = {
+    'familiar':
+        'The piece opens with a simple, familiar-sounding phrase in a comfortable mid-range register, played '
+        'softly and plainly over a few warm chords. The phrase repeats at a steady pace, with a clear, even '
+        'pulse and a soft, level volume.',
+    'safe':
+        'Warm, consonant harmony at a soft, even volume. A gentle, repeating accompaniment pattern is established '
+        'and stays the same from bar to bar, while the simple melody returns over it in a comfortable mid-range '
+        'register.',
+    'comfortable':
+        'A stable, predictable pattern carries on: the same short melodic phrases return with only subtle '
+        'variation over steady, consonant chords, in a clear, light texture at a soft, even volume.',
+    'engaging':
+        'Clear, memorable phrases in a comfortable mid-range register, simple enough to follow and tap along '
+        'with. Each short phrase is answered by a matching one over a steady, even pulse and plain consonant '
+        'chords, at a soft, level volume.',
+    'emotionally_supportive':
+        'The arrangement thins to fewer instruments and the music eases: longer notes, more space between the '
+        'phrases and softer dynamics over the same steady pulse, with the familiar melody returning gently in a '
+        'warm mid-range register.',
+    'steady_and_familiar':
+        'The piece opens at a steady pace with a simple, familiar-sounding melody on a few instruments, in a '
+        'comfortable mid-range register over plain, consonant chords. The pulse is clear and even and the volume '
+        'soft and level.',
+    'simplify_rhythm':
+        'The rhythm becomes simpler: one soft note or chord on each beat carries the pulse plainly, while the '
+        'melody keeps to short, familiar phrases with long notes and the harmony stays warm and consonant.',
+    'fewer_instruments':
+        'Only one or two instruments play. The same short, familiar phrase repeats more often, almost unchanged '
+        'each time, over a plain, steady accompaniment at a soft, even volume, with more room between the notes.',
+    'calming_settle':
+        'The music settles at one steady, unhurried pace. The harmony moves less, resting on the same few warm '
+        'chords for longer, the dynamics even out to one soft level, and the short phrase repeats gently.',
+    'spacious_calm':
+        'More space and long sustained tones. The melody reduces to one short phrase that repeats softly, with '
+        'wide gaps of near stillness between the repeats and warm chords held for a long time underneath.',
+    'calming_fade_or_loop':
+        'The spacious calm continues: long sustained tones and warm held chords at one soft, even level, with '
+        'the same short phrase repeating softly and slowly and wide, still space around it.',
 }
 # how the last phase ends, added to its line above
 DEMENTIA_ENDING_TEXT = {
@@ -1288,16 +1442,16 @@ def dementia_user_message(session_request, settings, arc, guideline_lines):
         lines += ['', 'Guideline lines added for this session (follow every one):']
         lines += [f'- {line}' for line in guideline_lines]
     lines += profile_block(s['profile'], DEMENTIA_PROFILE)
-    lines += ['', 'Respond with ONLY this JSON object:',
+    lines += ['', REPLY_INSTRUCTION,
               json_skeleton(['"purpose": "..."', '"genres": ["...", "..."]',
                              '"instruments": ["...", "..."]', '"addition": ""'], arc)]
     return '\n'.join(lines)
 
 
-def clean_dementia_plan(data, settings, arc):
-    """Validate one parsed reply; returns (plan, notes) like clean_pain_relief_plan."""
+def clean_dementia_plan(data, settings, arc, repair=False):
+    """Validate one parsed reply; returns (plan, notes), and repairs, like clean_pain_relief_plan."""
     avoided = dementia_avoided(settings, arc)
-    phases, notes = clean_phases(data, arc, avoided)
+    phases, notes = clean_phases(data, arc, avoided, DEMENTIA_PHASE_FALLBACK if repair else None)
     purpose = clean_purpose(data.get('purpose'), DEMENTIA_PURPOSES,
                             DEMENTIA_DEFAULT_PURPOSE[settings['session_mode']])
     genres = clean_genres(data.get('genres'), DEMENTIA_GENRES, notes, avoided[arc[0][0]])
@@ -1308,10 +1462,11 @@ def clean_dementia_plan(data, settings, arc):
 
 
 def generate_dementia_plan(session_request, settings, arc, guideline_lines, log, attempts=3):
-    """Call Qwen until one reply passes clean_dementia_plan, or give up."""
+    """Call Qwen until one reply passes clean_dementia_plan. If none does, orchestrate
+    has the best one repaired, so there is always a plan."""
     user_message = dementia_user_message(session_request, settings, arc, guideline_lines)
     return orchestrate(user_message, DEMENTIA_SYSTEM_PROMPT,
-                       lambda data: clean_dementia_plan(data, settings, arc),
+                       lambda data, repair=False: clean_dementia_plan(data, settings, arc, repair),
                        log, 'dementia', attempts)
 
 
@@ -1464,6 +1619,65 @@ DEPRESSION_PHASE_TEXT = {
     'sleep_calm':             'Calm, sustained tones; rhythmic activity fades further.',
     'low_stimulation':        'Very low stimulation: long sustained tones and slow harmonic movement.',
     'sleep_readiness':        'Barely moving sustained tones and seamless transitions.',
+}
+# What a phase plays when no reply of Qwen's gives it usable text (see orchestrate):
+# the lines above in the positive wording the phases are written in, without the
+# mood words the filter drops. Piano and pad are named because they play in every
+# phase, strings only in Sleep preparation's phases; the joining instrument is
+# "a new instrument", whichever one it is. DEPRESSION_ENDINGS adds how the piece ends.
+DEPRESSION_PHASE_FALLBACK = {
+    'acknowledge_heaviness':
+        'Quiet, slow and a little subdued: sparse piano notes in a low-to-middle register, each left to ring over '
+        'a soft, sustained pad. The rhythm is minimal, with long pauses between the phrases and very soft dynamics.',
+    'safety':
+        'The harmony settles on warm, consonant chords held by the pad, while the piano marks a soft, steady '
+        'pulse with simple repeated notes. Every change is gradual, at one even, quiet level.',
+    'warmth':
+        'A warm new instrument joins softly, carrying simple, memorable phrases over the piano and the pad. The '
+        'harmony opens gently toward wider, more open colors, the melody sits in a comfortable middle register, '
+        'and the texture fills out a little.',
+    'calm':
+        'The density eases back into long sustained tones: the piano plays fewer, slower notes, the pad holds '
+        'warm chords for a long time, and the phrases grow longer and quieter with more space between them.',
+    'stillness':
+        'The piece begins still: a soft pad holds one warm chord while single piano notes sound far apart in a '
+        'middle register. The rhythm is minimal and the dynamics very soft, with wide space around each note.',
+    'comfort':
+        'Warm, consonant chords settle in and a gentle pulse begins as a new instrument enters softly beside the '
+        'piano and the pad, with short, simple phrases, soft dynamics and an even, unhurried flow.',
+    'engagement':
+        'A clearer, steady pulse and more melodic movement: the melody moves in longer, flowing phrases while the '
+        'harmony widens and opens over the piano and the pad, with a fuller but still soft, rounded sound.',
+    'subtle_positive_energy':
+        'Wider, more open harmonic movement at a steady, gentle energy that holds its level: a clear, even pulse, '
+        'warm flowing phrases in the melody and full, soft chords from the piano and the pad.',
+    'tension':
+        'Some rhythmic activity and a fuller texture, warm and consonant: the piano plays a gentle repeating '
+        'figure, a second instrument moves with it in short phrases, and the pad fills the middle register softly.',
+    'relaxation_calm':
+        'The rhythmic activity and the density begin to reduce: fewer notes in each phrase, longer phrases and '
+        'more sustained chords from the pad, with the moving line growing slower and softer.',
+    'spaciousness':
+        'More space: fewer notes, longer tones and a wider, airier texture. Sparse piano notes ring out over '
+        'soft, sustained pad chords, with long gaps of near stillness between the phrases.',
+    'deep_relaxation':
+        'Minimal rhythm and long sustained tones: the pad holds slow, warm chords that change very gradually, '
+        'and the piano adds only an occasional soft note in a low, gentle register.',
+    'emotional_fatigue':
+        'Slow and gentle: minimal rhythm and soft sustained tones, with the pad holding warm chords, a few quiet '
+        'piano notes far apart and long, soft string tones underneath, all at a very low level.',
+    'sleep_safety':
+        'Warm, stable harmony: the same few consonant chords return in the same order, held by the pad and the '
+        'strings, while quiet piano notes mark a slow, even pace. Every change is gradual.',
+    'sleep_calm':
+        'Calm, sustained tones. The rhythmic activity fades further: the piano plays fewer and softer notes, and '
+        'long pad and string chords overlap and drift slowly at one quiet level, with wide space between the notes.',
+    'low_stimulation':
+        'Very low stimulation: long sustained tones and slow harmonic movement. The pad and the strings hold each '
+        'soft chord for a long time, and the piano is almost silent, adding only a rare, quiet note.',
+    'sleep_readiness':
+        'Barely moving sustained tones: one soft, warm chord drifts into the next with seamless transitions, at '
+        'a constant, very quiet level, with a still, even texture from the pad and the strings.',
 }
 DEPRESSION_ENDING_TEXT = {
     'fade': 'It ends with a slow fade to silence.',
@@ -1791,14 +2005,14 @@ def depression_user_message(session_request, settings, arc, guideline_lines):
     fields = ['"purpose": "..."', '"genres": ["...", "..."]']
     if joiners:
         fields.append(f'"joining": "{" or ".join(joiners)}"')
-    lines += ['', 'Respond with ONLY this JSON object:', json_skeleton(fields + ['"addition": ""'], arc)]
+    lines += ['', REPLY_INSTRUCTION, json_skeleton(fields + ['"addition": ""'], arc)]
     return '\n'.join(lines)
 
 
-def clean_depression_plan(data, settings, arc):
-    """Validate one parsed reply; returns (plan, notes) like clean_pain_relief_plan."""
+def clean_depression_plan(data, settings, arc, repair=False):
+    """Validate one parsed reply; returns (plan, notes), and repairs, like clean_pain_relief_plan."""
     avoided = depression_avoided(settings, arc)
-    phases, notes = clean_phases(data, arc, avoided)
+    phases, notes = clean_phases(data, arc, avoided, DEPRESSION_PHASE_FALLBACK if repair else None)
     purpose = clean_purpose(data.get('purpose'), DEPRESSION_PURPOSES,
                             DEPRESSION_DEFAULT_PURPOSE[settings['session_mode']])
     genres = clean_genres(data.get('genres'), DEPRESSION_GENRES, notes, avoided[arc[0][0]])
@@ -1815,10 +2029,11 @@ def clean_depression_plan(data, settings, arc):
 
 
 def generate_depression_plan(session_request, settings, arc, guideline_lines, log, attempts=3):
-    """Call Qwen until one reply passes clean_depression_plan, or give up."""
+    """Call Qwen until one reply passes clean_depression_plan. If none does, orchestrate
+    has the best one repaired, so there is always a plan."""
     user_message = depression_user_message(session_request, settings, arc, guideline_lines)
     return orchestrate(user_message, DEPRESSION_SYSTEM_PROMPT,
-                       lambda data: clean_depression_plan(data, settings, arc),
+                       lambda data, repair=False: clean_depression_plan(data, settings, arc, repair),
                        log, 'depression', attempts)
 
 
@@ -1842,6 +2057,22 @@ def assemble_depression_prompts(plan, settings, arc, audio_phrases):
         description = plan['phases'][name].rstrip(' .,;:!?')
         prompts[name] = f'{tags} {tempo} {description}, Addition Request: {"; ".join(additions)}'
     return prompts
+
+
+# The fallback descriptions are what keep a session from failing on a bad reply, so
+# they are checked as the module loads: every phase of every arc has one, and it gets
+# through its module's strictest filter (every word group, whatever the settings) whole.
+for _arcs, _fallback, _avoided in (
+        ((config.PAIN_ARC,), PAIN_PHASE_FALLBACK, AVOIDED_SOUNDS),
+        (config.DEMENTIA_ARCS.values(), DEMENTIA_PHASE_FALLBACK,
+         word_filter(DEMENTIA_AVOIDED, VOICE_WORDS, PERCUSSION_WORDS, r'bright\w*')),
+        (config.DEPRESSION_ARCS.values(), DEPRESSION_PHASE_FALLBACK,
+         word_filter(DEPRESSION_AVOIDED, VOICE_WORDS, PERCUSSION_WORDS))):
+    for _name in (name for arc in _arcs for name, _ in arc):
+        _text = _fallback.get(_name, '')
+        assert (len(_text.split()) >= PHASE_MIN_WORDS and not PROMPT_TAG.search(_text)
+                and not audio_safe(_text, _avoided)[1]), \
+            f'{_name} needs a fallback description that passes the filters as it stands'
 
 
 # ============================================================
@@ -2242,7 +2473,7 @@ def generate_session(session_request, seed=None, log=None, on_segment=None,
     log('orchestrating...')
     load_qwen()
     try:
-        phase_prompts = generate_phase_prompts(session_request)
+        phase_prompts = generate_phase_prompts(session_request, log)
     finally:
         unload_qwen()   # always give the VRAM back, even if orchestration failed
     for name in ('match', 'transition', 'settle'):

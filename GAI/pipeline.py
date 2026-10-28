@@ -1,8 +1,8 @@
 """Notebook sections 5-9 as a resident service.
 
 Both models load once at process start and stay on the GPU. Nothing here
-touches Colab, Drive, or `!pip`. The only entry point the server uses is
-generate_session(), which runs one of four pipelines:
+touches Colab, Drive, or `!pip`. The server uses two entry points.
+generate_session() runs one of four pipelines:
 
   iso          match -> transition -> settle, three prompts (the original)
   pain_relief  the Hospice & Chronic Illness guideline's Module 1, Pain Relief:
@@ -11,6 +11,9 @@ generate_session(), which runs one of four pipelines:
                phases, or six in Calming mode
   depression   Module 3, Depression: meets the mood first, then comforts or
                gently lifts; four or five phases depending on the session mode
+
+inpaint_session() regenerates chosen parts of a finished session (Stable Audio
+3 inpainting) and saves the result as a new version of it.
 """
 import config  # noqa: F401  — must come first, sets HF_HOME before transformers
 
@@ -398,6 +401,7 @@ def audio_safe(text, avoided=None):
     avoided defaults to the pain relief list. Returns (text, dropped clauses)."""
     avoided = avoided or AVOIDED_SOUNDS
     text = BPM_MENTION.sub('', str(text)).strip()
+    text = re.sub(r'[,;:]+(?=[.!?])', '', text)   # "slower, at 50 BPM." leaves "slower,."
     kept, dropped = [], []
     for clause in re.split(r'(?<=[,;.!?])\s+', text):
         (dropped if avoided.search(clause) else kept).append(clause)
@@ -2132,15 +2136,16 @@ def build_segments(phase_prompts, phase_durations, total_duration_s, seed, log):
     settle_chunk_durations.append(remaining)        # final chunk, always <= CAP_LAST
 
     segments = [
-        {'name': 'match', 'position': 'first', 'duration_s': match_duration,
+        {'name': 'match', 'phase': 'match', 'position': 'first', 'duration_s': match_duration,
          'seed': seed, 'prompt': phase_prompts['match']},
-        {'name': 'transition', 'position': 'middle', 'duration_s': transition_duration,
+        {'name': 'transition', 'phase': 'transition', 'position': 'middle', 'duration_s': transition_duration,
          'seed': seed, 'prompt': phase_prompts['transition']},
     ]
     last_i = len(settle_chunk_durations) - 1
     for i, d in enumerate(settle_chunk_durations):
         segments.append({
             'name': 'settle' if last_i == 0 else f'settle_{i + 1}',
+            'phase': 'settle',
             'position': 'last' if i == last_i else 'middle',
             'duration_s': d,
             'seed': seed,
@@ -2362,36 +2367,57 @@ def apply_post_eq(in_path, out_path, log,
     return out_path
 
 
+def inpaint_limits():
+    """What a fix may regenerate, for the page: from config, so tuning it there is enough."""
+    return {'part_min_s': config.INPAINT_MIN_S, 'part_max_s': config.INPAINT_MAX_S,
+            'max_parts': config.INPAINT_MAX_PARTS, 'context_s': config.INPAINT_CTX_S}
+
+
+def ending_post(ending, total_duration_s):
+    """apply_post_eq's settings for a session's ending: a fade to silence over the
+    last FADE_SHARE of the session, a soft close's short tail, a loop point folded
+    into the start, or (ending None, the ISO default) no ending at all."""
+    post = dict(config.POST_EQ)
+    if ending == 'fade':
+        post['fade_out_s'] = total_duration_s * config.FADE_SHARE
+    elif ending == 'close':
+        post['fade_out_s'] = config.CLOSE_FADE_S
+    elif ending == 'loop':
+        post['loop_crossfade_s'] = config.LOOP_CROSSFADE_S
+    return post
+
+
 # ============================================================
 # Preview encoding and waveform peaks
 # ============================================================
 
-def make_preview(in_path, out_dir, log):
+def make_preview(in_path, out_dir, log, name='preview'):
     """Write a small, browser-safe version of the finished session.
 
     The deliverable is 24-bit PCM, which Chrome plays inconsistently and which
     runs ~380 MB for a 20-minute session — unusable over a tunnel. ffmpeg gives
     us a ~20 MB MP3; without it we fall back to 16-bit WAV, which every browser
-    handles but is still large.
+    handles but is still large. name is the file name without its extension
+    (preview_v2 for a session's second version).
     """
     if shutil.which('ffmpeg'):
-        out = os.path.join(out_dir, 'preview.mp3')
+        out = os.path.join(out_dir, f'{name}.mp3')
         subprocess.run(
             ['ffmpeg', '-y', '-loglevel', 'error', '-i', in_path,
              '-codec:a', 'libmp3lame', '-b:a', '128k', out],
             check=True,
         )
-        log(f'preview.mp3 {os.path.getsize(out)/1e6:.1f} MB')
+        log(f'{name}.mp3 {os.path.getsize(out)/1e6:.1f} MB')
         return out
 
-    out = os.path.join(out_dir, 'preview.wav')
+    out = os.path.join(out_dir, f'{name}.wav')
     x, sr = sf.read(in_path, always_2d=True)
     sf.write(out, x, sr, subtype='PCM_16')
-    log(f'preview.wav {os.path.getsize(out)/1e6:.1f} MB (ffmpeg not found — install it for smaller previews)')
+    log(f'{name}.wav {os.path.getsize(out)/1e6:.1f} MB (ffmpeg not found — install it for smaller previews)')
     return out
 
 
-def make_loop_check(in_path, out_dir, log, seconds=None):
+def make_loop_check(in_path, out_dir, log, seconds=None, name='loop_check'):
     """The guideline's "check the last and first seconds together" as one clip.
 
     The end of a loop-ending session followed straight by its start. A player's
@@ -2404,20 +2430,20 @@ def make_loop_check(in_path, out_dir, log, seconds=None):
     tail, sr = sf.read(in_path, start=info.frames - n, always_2d=True)
     head, _ = sf.read(in_path, frames=n, always_2d=True)
 
-    wav = os.path.join(out_dir, 'loop_check.wav')
+    wav = os.path.join(out_dir, f'{name}.wav')
     sf.write(wav, np.concatenate([tail, head]), sr, subtype='PCM_16')
     if not shutil.which('ffmpeg'):
-        log(f'loop_check.wav: last {n / sr:.0f}s, then first {n / sr:.0f}s')
+        log(f'{name}.wav: last {n / sr:.0f}s, then first {n / sr:.0f}s')
         return wav
 
-    mp3 = os.path.join(out_dir, 'loop_check.mp3')
+    mp3 = os.path.join(out_dir, f'{name}.mp3')
     subprocess.run(
         ['ffmpeg', '-y', '-loglevel', 'error', '-i', wav,
          '-codec:a', 'libmp3lame', '-b:a', '192k', mp3],
         check=True,
     )
     os.remove(wav)
-    log(f'loop_check.mp3: last {n / sr:.0f}s, then first {n / sr:.0f}s')
+    log(f'{name}.mp3: last {n / sr:.0f}s, then first {n / sr:.0f}s')
     return mp3
 
 
@@ -2499,6 +2525,7 @@ def generate_session(session_request, seed=None, log=None, on_segment=None,
     return {
         'mode': 'iso',
         'ending': None,
+        'version': 1,
         'out_dir': out_dir,
         'raw_path': raw_path,
         'eq_path': eq_path,
@@ -2506,7 +2533,8 @@ def generate_session(session_request, seed=None, log=None, on_segment=None,
         'peaks': peaks,
         'duration_s': len(track) / SR,
         'prompts': phase_prompts,
-        'segments': [{'name': s['name'], 'duration_s': s['duration_s']} for s in segments],
+        'segments': [{'name': s['name'], 'phase': s['phase'], 'duration_s': s['duration_s']} for s in segments],
+        'limits': inpaint_limits(),
     }
 
 
@@ -2541,13 +2569,7 @@ def render_arc_session(mode, session_request, arc, phase_prompts, settings, seed
     # [1]: keep the path, let the stitched array go before EQ loads its own copy
     raw_path = build_session(segments, out_dir, log, on_segment)[1]
 
-    post = dict(config.POST_EQ)
-    if settings['ending'] == 'fade':
-        post['fade_out_s'] = total_duration_s * config.FADE_SHARE
-    elif settings['ending'] == 'close':
-        post['fade_out_s'] = config.CLOSE_FADE_S
-    else:
-        post['loop_crossfade_s'] = config.LOOP_CROSSFADE_S
+    post = ending_post(settings['ending'], total_duration_s)
     eq_path = apply_post_eq(raw_path, os.path.join(out_dir, 'completed_EQed.wav'), log, **post)
 
     preview_path = make_preview(eq_path, out_dir, log)
@@ -2558,6 +2580,7 @@ def render_arc_session(mode, session_request, arc, phase_prompts, settings, seed
         'mode': mode,
         'ending': settings['ending'],
         'settings': settings,
+        'version': 1,
         'out_dir': out_dir,
         'raw_path': raw_path,
         'eq_path': eq_path,
@@ -2566,7 +2589,8 @@ def render_arc_session(mode, session_request, arc, phase_prompts, settings, seed
         'peaks': peaks,
         'duration_s': sf.info(eq_path).duration,   # the loop ending is a few seconds shorter than the render
         'prompts': phase_prompts,
-        'segments': [{'name': s['name'], 'duration_s': s['duration_s']} for s in segments],
+        'segments': [{'name': s['name'], 'phase': s['phase'], 'duration_s': s['duration_s']} for s in segments],
+        'limits': inpaint_limits(),
     }
 
 
@@ -2661,3 +2685,396 @@ GUIDELINE_MODULES = {
     'dementia':    generate_dementia_session,
     'depression':  generate_depression_session,
 }
+
+
+# ============================================================
+# Section 10 — fixing one part (inpainting)
+# ============================================================
+#
+# A finished session can have parts regenerated while everything else stays as
+# it was. Stable Audio 3 inpaints: it gets a stretch of the session as audio with
+# a mask over the part, and writes new music only inside the mask, carried in and
+# out by the music around it ("The audio context matters more than the prompt",
+# Stability's prompting guide). Each call holds a part plus up to INPAINT_CTX_S
+# on either side. Parts close enough to fit one call go in together, as a list of
+# masks, the way Stability's inference doc shows for "multiple non-contiguous
+# regions".
+#
+# The prompt is the one the part's phase was rendered from, with the problems
+# ticked on the page (each in positive wording, like the modules' fixes) and the
+# listener's own words first in its Addition Request.
+#
+# Each fix is a new version of the session: completed_v2.wav, completed_EQed_v2.wav,
+# preview_v2.mp3 and so on, beside the files of the version it started from, which
+# are never overwritten. The whole new render goes through the same EQ, loudness
+# normalization and ending as version 1, so the level and the ending stay as they were.
+
+# The problems the page lists for a part. A guideline module's Troubleshooting fixes
+# keep their positive wording from PAIN_FIXES, DEMENTIA_FIXES and DEPRESSION_FIXES;
+# these two apply in every mode; ISO sessions, which have no guideline of their own,
+# use ISO_PART_FIXES.
+PART_FIXES_SHARED = {
+    'glitch':  'clean, smooth and continuous sound',
+    'jarring': 'a seamless continuation of the same piece, with the same instruments, key and tempo',
+}
+ISO_PART_FIXES = {
+    'percussion': 'the rhythm carried softly by the main instruments',
+    'voices':     'purely instrumental',
+    'harsh':      'warm, rounded, soft-edged timbres',
+    'loud':       'even volume, every change gradual',
+    'busy':       'a clear, uncluttered texture with space between the notes',
+    'dark':       'warm, consonant harmony and a calm, reassuring mood',
+}
+# A percussion fix where the session's percussion doesn't play asks for this instead:
+# naming percussion there would bring it in.
+PART_NO_PERCUSSION = 'the pulse carried softly by the instruments'
+
+# A clause of the listener's own words that asks for something to go ("no drums",
+# "without the bells") is left out of the prompt, since a sound named in a
+# text-to-audio prompt tends to appear whatever the words around it say. So is
+# any clause the module's own filter drops.
+NEGATION_WORDS = r"no|not|without|never|don'?t|do\s+not|avoid\w*|remov\w*|get\s+rid|take\s+out|cut\s+out|stop\w*"
+PART_NOTE_WORDS = 40     # the listener's words kept, so the rest of the prompt still fits the text encoder
+
+# Ending phrases that describe an event at the very end. A part that doesn't reach
+# the end of the session leaves them out, so it doesn't fade or resolve mid-session.
+PART_ENDING_EVENTS = tuple(dict.fromkeys((PAIN_ENDINGS['fade'], DEMENTIA_ENDINGS['close'],
+                                          DEMENTIA_ENDINGS['fade'], DEPRESSION_ENDINGS['fade'])))
+
+
+def mmss(seconds):
+    """3:07 — for log lines and messages the page shows."""
+    s = int(round(seconds))
+    return f'{s // 60}:{s % 60:02d}'
+
+
+def version_file(out_dir, stem, version, ext):
+    """One version's file. Version 1 keeps the original names (completed.wav);
+    version 2 is completed_v2.wav, completed_EQed_v2.wav, preview_v2.mp3 ..."""
+    return os.path.join(out_dir, f'{stem}.{ext}' if version == 1 else f'{stem}_v{version}.{ext}')
+
+
+def next_version(out_dir):
+    """The first version number not yet used in out_dir, so a fix made from an older
+    version never overwrites a newer one."""
+    taken = [int(m.group(1)) for f in os.listdir(out_dir)
+             if (m := re.fullmatch(r'completed_v(\d+)\.wav', f))]
+    return max(taken, default=1) + 1
+
+
+def session_folder(base):
+    """The session folder of a page result: its folder, or for results from before
+    versions existed, the folder in its audio_url."""
+    folder = base.get('folder')
+    if not folder:
+        m = re.match(r'/audio/([^/]+)/', str(base.get('audio_url') or ''))
+        folder = m.group(1) if m else ''
+    if not folder or folder in ('.', '..') or '/' in folder or '\\' in folder:
+        raise ValueError('this session has no files to fix')
+    out_dir = config.WORK / folder
+    if not out_dir.is_dir():
+        raise ValueError("this session's files are no longer on the server")
+    return str(out_dir)
+
+
+def clean_parts(parts, length_s):
+    """The parts to regenerate as [(start_s, end_s)], in order, overlapping ones joined.
+    A part is a [start, end] pair or {"start_s": ..., "end_s": ...}. Raises ValueError,
+    worded for the page, for parts that can't be used."""
+    if not isinstance(parts, (list, tuple)) or not parts:
+        raise ValueError('choose a part of the session to regenerate')
+    if len(parts) > config.INPAINT_MAX_PARTS:
+        raise ValueError(f'choose at most {config.INPAINT_MAX_PARTS} parts at a time')
+    cleaned = []
+    for i, part in enumerate(parts, 1):
+        if isinstance(part, dict):
+            part = (part.get('start_s'), part.get('end_s'))
+        try:
+            start, end = (float(v) for v in part)
+        except (TypeError, ValueError):
+            raise ValueError(f'part {i} needs a start and an end, in seconds')
+        if not (math.isfinite(start) and math.isfinite(end)) or end <= start:
+            raise ValueError(f'part {i} must end after it starts')
+        # half a second of slack: the MP3 the page measures can be a few ms longer
+        if start < 0 or end > length_s + 0.5:
+            raise ValueError(f'part {i} ({mmss(start)}–{mmss(end)}) is outside the session (0:00–{mmss(length_s)})')
+        cleaned.append([start, min(end, length_s)])
+    cleaned.sort()
+    joined = []
+    for start, end in cleaned:
+        if joined and start <= joined[-1][1]:
+            joined[-1][1] = max(joined[-1][1], end)
+        else:
+            joined.append([start, end])
+    for start, end in joined:
+        if end - start < config.INPAINT_MIN_S - 0.01:
+            raise ValueError(f'the part at {mmss(start)} is {end - start:.0f} s long; '
+                             f'make it at least {config.INPAINT_MIN_S:.0f} s')
+        if end - start > config.INPAINT_MAX_S + 0.01:
+            raise ValueError(f'the part at {mmss(start)} is {mmss(end - start)} long; '
+                             f'a part can be at most {mmss(config.INPAINT_MAX_S)}')
+    return [(start, end) for start, end in joined]
+
+
+def part_calls(parts, length_s):
+    """The model calls that regenerate the parts: [(window_start, window_end, parts)],
+    each window its parts plus up to INPAINT_CTX_S either side, at most
+    MAX_MODEL_DURATION_S long. Parts that fit one window together share it."""
+    calls = []
+    for start, end in parts:
+        if calls:
+            ws, _, joined = calls[-1]
+            we = min(length_s, end + config.INPAINT_CTX_S)
+            if we - ws <= config.MAX_MODEL_DURATION_S:
+                calls[-1] = (ws, we, joined + [(start, end)])
+                continue
+        calls.append((max(0.0, start - config.INPAINT_CTX_S), min(length_s, end + config.INPAINT_CTX_S),
+                      [(start, end)]))
+    return calls
+
+
+def segment_phase(seg):
+    """A segment's phase: its own entry, or (results from before it was stored) its name
+    without the chunk number, settle_2 -> settle."""
+    return seg.get('phase') or re.sub(r'_\d+$', '', seg['name'])
+
+
+def part_phase(segments, parts):
+    """The phase that plays most of the parts, by the session's segment plan."""
+    overlap, t = {}, 0.0
+    for seg in segments:
+        a, b = t, t + seg['duration_s']
+        t = b
+        for start, end in parts:
+            o = min(b, end) - max(a, start)
+            if o > 0:
+                overlap[segment_phase(seg)] = overlap.get(segment_phase(seg), 0.0) + o
+    return max(overlap, key=overlap.get) if overlap else segment_phase(segments[-1])
+
+
+def part_phrases(mode, settings, fixes, phase, log):
+    """(problem ids used, their positive wording) for the problems ticked for a part,
+    as the part's phase can take them."""
+    s = settings or {}
+    table = {'pain_relief': PAIN_FIXES, 'dementia': DEMENTIA_FIXES, 'depression': DEPRESSION_FIXES}.get(mode)
+    used, phrases = [], []
+    for fix in fixes or []:
+        if fix in PART_FIXES_SHARED:
+            phrase = PART_FIXES_SHARED[fix]
+        elif table is None and fix in ISO_PART_FIXES:
+            phrase = ISO_PART_FIXES[fix]
+        elif table is not None and fix in table:
+            phrase = table[fix][1]
+            if mode == 'pain_relief':
+                phrase = phrase.format(bpm=s.get('bpm', config.PAIN_DEFAULT_BPM))
+            elif fix == 'percussion':
+                plays = DEMENTIA_PERCUSSION_PHASES if mode == 'dementia' else DEPRESSION_PERCUSSION_PHASES
+                if s.get('percussion') != 'light' or phase not in plays:
+                    phrase = PART_NO_PERCUSSION
+            elif mode == 'dementia' and fix == 'song':
+                phrase = 'an original, simple melody'      # the guideline's line is for the orchestrator only
+            elif mode == 'dementia' and fix == 'lyrics' and s.get('voice') != 'wordless':
+                phrase = 'purely instrumental'              # "any voice" would invite one
+            elif mode == 'depression' and fix == 'never_lifts' and phase not in DEPRESSION_FIX_PHASES['never_lifts']:
+                log('warning: fix never_lifts left out: it is for the second half of a Gentle activation session')
+                continue
+        else:
+            log(f'warning: unknown fix {fix!r} ignored')
+            continue
+        if fix not in used:
+            used.append(fix)
+        if phrase and phrase not in phrases:
+            phrases.append(phrase)
+    return used, phrases
+
+
+def part_note(note, mode, settings, phase, log):
+    """(the listener's own words as they can go into the prompt, the clauses left out).
+    Tempo numbers come out (the code states the tempo), and so does any clause that
+    names a sound the module avoids or asks for something to go (NEGATION_WORDS)."""
+    text = re.sub(r'\s+', ' ', str(note or '')).strip()[:600]
+    if not text:
+        return '', []
+    s = settings or {}
+    own = None
+    try:
+        if mode == 'pain_relief':
+            own = AVOIDED_SOUNDS
+        elif mode == 'dementia':
+            arc = config.DEMENTIA_ARCS[dementia_arc_key(s.get('session_mode'))]
+            own = dementia_avoided(s, arc).get(phase)
+        elif mode == 'depression':
+            own = depression_avoided(s, config.DEPRESSION_ARCS[s.get('session_mode', 'comfort')]).get(phase)
+    except (KeyError, TypeError):
+        own = None
+    if own is None and mode == 'dementia':
+        own = word_filter(DEMENTIA_AVOIDED, VOICE_WORDS, PERCUSSION_WORDS)
+    elif own is None and mode == 'depression':
+        own = word_filter(DEPRESSION_AVOIDED, VOICE_WORDS, PERCUSSION_WORDS)
+    negated = r'\b(?:' + NEGATION_WORDS + r')\b'
+    avoided = re.compile(f'{own.pattern}|{negated}' if own else negated, re.IGNORECASE)
+    text, dropped = audio_safe(text, avoided)
+    text = ' '.join(text.split()[:PART_NOTE_WORDS]).rstrip(',;:. ')
+    if dropped:
+        log(f'left out of the prompt (say what it should sound like instead): {dropped}')
+    return text[:1].lower() + text[1:], dropped
+
+
+def part_prompt(phase_prompt, phrases, at_end):
+    """The phase's own prompt with phrases first in its Addition Request. A part that
+    doesn't reach the end of the session leaves out the ending's fade or close."""
+    prompt = phase_prompt
+    if not at_end:
+        for event in PART_ENDING_EVENTS:
+            prompt = prompt.replace(f'Addition Request: {event}; ', 'Addition Request: ')
+    phrases = [p for p in phrases if p and p not in prompt]
+    if not phrases:
+        return prompt
+    m = re.search(r'Addition Request:\s*', prompt, re.IGNORECASE)
+    if not m:
+        return prompt.rstrip(' .,;:') + ', Addition Request: ' + '; '.join(phrases)
+    rest = prompt[m.end():].strip()
+    return prompt[:m.end()] + '; '.join(phrases + ([rest] if rest else []))
+
+
+def inpaint_session(base, parts, fixes=None, note='', seed=None, log=None, on_segment=None):
+    """Regenerate parts of a finished session and save the result as a new version.
+
+    base     — the version to start from, as the server's result_for_page gives it:
+               folder, version, mode, ending, settings, prompts, segments (a result
+               from before versions existed is version 1, found by its audio_url)
+    parts    — [[start_s, end_s], ...] on the session's timeline, each INPAINT_MIN_S
+               to INPAINT_MAX_S long, at most INPAINT_MAX_PARTS
+    fixes    — the problems ticked on the page (PART_FIXES_SHARED, the module's fix
+               ids, or ISO_PART_FIXES)
+    note     — the listener's own words for what the part should sound like
+    log(str), on_segment(i, total, phase) — as for generate_session
+
+    Returns a result like render_arc_session's for the new version, plus version,
+    base_version, parts, fixes, note, left_out and seed.
+    """
+    log = log or print
+    seed = int(np.random.randint(0, 99999)) if seed is None or int(seed) < 0 else int(seed)
+    mode = base.get('mode') or 'iso'
+    ending = base.get('ending')
+    settings = base.get('settings') or {}
+    prompts = base.get('prompts') or {}
+    segments = base.get('segments') or []
+    base_version = int(base.get('version') or 1)
+    if not prompts or not segments:
+        raise ValueError('this session has no prompts or segment plan to work from')
+
+    # 1. the version the fix starts from: its raw render, before EQ and ending
+    out_dir = session_folder(base)
+    raw_in = version_file(out_dir, 'completed', base_version, 'wav')
+    if not os.path.exists(raw_in):
+        raise ValueError(f'version {base_version} of this session is no longer on the server')
+    track, sr = sf.read(raw_in, dtype='float32', always_2d=True)
+    assert sr == SR, f'{raw_in} is {sr}Hz, the model makes {SR}Hz'
+    length_s = len(track) / SR
+
+    # 2. the parts, and the model calls that cover them
+    parts = clean_parts(parts, length_s)
+    calls = part_calls(parts, length_s)
+    version = next_version(out_dir)
+    log(f'regenerating {", ".join(f"{mmss(a)}–{mmss(b)}" for a, b in parts)} of version {base_version} '
+        f'as version {version}: {len(calls)} model call{"s" if len(calls) > 1 else ""}, seed {seed}')
+
+    # 3. each call: its window of the session as context, a mask over its parts, and
+    #    the new audio crossfaded in over INPAINT_XFADE_S of the music kept either
+    #    side. The model rebuilds the kept music too, so the crossfade runs between
+    #    two versions of the same audio (equal-gain: sin² + cos² = 1). A later call
+    #    takes its context from the track as the earlier ones left it.
+    xf = int(config.INPAINT_XFADE_S * SR)
+    fixes_used, left_out, notes_used, part_info = [], [], [], []
+    for k, (ws, we, call_parts) in enumerate(calls):
+        phase = part_phase(segments, call_parts)
+        if phase not in prompts:
+            raise ValueError(f'this session has no prompt for its {phase} phase')
+        if on_segment:
+            on_segment(k, len(calls), phase)
+        used, phrases = part_phrases(mode, settings, fixes, phase, log)
+        note_text, dropped = part_note(note, mode, settings, phase, log)
+        fixes_used += [f for f in used if f not in fixes_used]
+        left_out += [d for d in dropped if d not in left_out]
+        if note_text and note_text not in notes_used:
+            notes_used.append(note_text)
+        at_end = call_parts[-1][1] >= length_s - config.INPAINT_CTX_S
+        prompt = part_prompt(prompts[phase], phrases + ([note_text] if note_text else []), at_end)
+        log(f'[part {k + 1}] {phase}: {prompt}')
+        if len(prompt.split()) > PROMPT_WORDS:
+            log(f'note: this prompt runs past ~{PROMPT_WORDS} words; the text encoder may cut its end off')
+
+        a0, b0 = round(ws * SR), round(we * SR)
+        context = track[a0:b0]
+        spans = [(round(s * SR) - a0, round(e * SR) - a0) for s, e in call_parts]
+        duration_s = (b0 - a0) / SR
+        starts = [s / SR for s, _ in spans]
+        ends = [e / SR for _, e in spans]
+        t0 = time.time()
+        out = model.generate(
+            prompt=prompt,
+            duration=duration_s,
+            seed=seed + k,
+            steps=config.STEPS,
+            sample_size=size_for(duration_s),
+            inpaint_audio=(SR, torch.from_numpy(context.T.copy())),   # (sample_rate, tensor), see render_segment
+            inpaint_mask_start_seconds=starts if len(starts) > 1 else starts[0],
+            inpaint_mask_end_seconds=ends if len(ends) > 1 else ends[0],
+        )
+        new = out[0].detach().cpu().numpy().T.astype(np.float32)
+        if new.ndim == 1:
+            new = new[:, None]
+        if new.shape[1] != context.shape[1]:
+            new = np.repeat(new[:, :1], context.shape[1], axis=1)
+        if len(new) < len(context):
+            new = np.concatenate([new, context[len(new):]])   # int(duration * SR) can land a sample short
+        new = new[:len(context)]
+        torch.cuda.empty_cache()
+
+        for (s, e), (start, end) in zip(spans, call_parts):
+            a, b = max(s - xf, 0), min(e + xf, len(context))
+            w = np.ones(b - a, dtype=np.float32)
+            n_in, n_out = s - a, b - e
+            if n_in:
+                w[:n_in] = np.sin(np.pi / 2 * (np.arange(n_in) + 0.5) / n_in) ** 2
+            if n_out:
+                w[len(w) - n_out:] = np.cos(np.pi / 2 * (np.arange(n_out) + 0.5) / n_out) ** 2
+            track[a0 + a:a0 + b] = track[a0 + a:a0 + b] * (1.0 - w[:, None]) + new[a:b] * w[:, None]
+            part_info.append({'start_s': round(start, 2), 'end_s': round(end, 2), 'phase': phase})
+        log(f'part {k + 1} of {len(calls)} done, {mmss(ws)}–{mmss(we)} as context ({time.time() - t0:.0f}s)')
+
+    # 4. the new version: its raw render, then the same EQ, loudness and ending as
+    #    version 1 (a fade covers the last FADE_SHARE of the session as it was asked for)
+    raw_path = version_file(out_dir, 'completed', version, 'wav')
+    sf.write(raw_path, track, SR, subtype='FLOAT')
+    total_s = settings.get('minutes', 0) * 60 or length_s
+    eq_path = apply_post_eq(raw_path, version_file(out_dir, 'completed_EQed', version, 'wav'), log,
+                            **ending_post(ending, total_s))
+    preview_path = make_preview(eq_path, out_dir, log, name=f'preview_v{version}')
+    loop_check_path = (make_loop_check(eq_path, out_dir, log, name=f'loop_check_v{version}')
+                       if ending == 'loop' else None)
+    peaks = compute_peaks(eq_path)
+
+    return {
+        'mode': mode,
+        'ending': ending,
+        'settings': base.get('settings'),
+        'version': version,
+        'base_version': base_version,
+        'parts': part_info,
+        'fixes': fixes_used,
+        'note': '; '.join(notes_used),
+        'left_out': left_out,
+        'seed': seed,
+        'out_dir': out_dir,
+        'raw_path': raw_path,
+        'eq_path': eq_path,
+        'preview_path': preview_path,
+        'loop_check_path': loop_check_path,
+        'peaks': peaks,
+        'duration_s': sf.info(eq_path).duration,
+        'prompts': prompts,
+        'segments': segments,
+        'limits': inpaint_limits(),
+    }

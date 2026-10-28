@@ -336,10 +336,8 @@ textarea.notes:focus{border-color:var(--line)}
 }
 .breath span{font-family:var(--serif);font-size:20px;color:var(--porcelain);padding:0 14%}
 @media (prefers-reduced-motion:no-preference){
-  .breath.go{animation:breathe 10s ease-in-out infinite}
   .arc.active{animation:glow 2.4s ease-in-out infinite}
 }
-@keyframes breathe{0%{transform:scale(.84)}40%{transform:scale(1)}100%{transform:scale(.84)}}
 @keyframes glow{0%,100%{opacity:.45}50%{opacity:1}}
 
 .step{text-align:center;margin:26px auto 0;max-width:40ch}
@@ -361,6 +359,24 @@ textarea.notes:focus{border-color:var(--line)}
 .time{text-align:center;margin-top:12px;color:var(--stone);font-variant-numeric:tabular-nums}
 .time em{font-style:normal;color:var(--porcelain)}
 
+/* breathing guide button, and the versions of a fixed session */
+.pill{
+  display:inline-flex;align-items:center;gap:10px;height:40px;margin-top:14px;padding:0 16px 0 12px;
+  border-radius:100px;border:1.5px solid var(--line);color:var(--stone);font-size:15px;font-weight:500;
+  transition:border-color .15s ease,color .15s ease;
+}
+.pill:hover{color:var(--porcelain);border-color:var(--stone-2)}
+.orbicon{width:16px;height:16px;border-radius:50%;background:var(--sage);transform:scale(.8)}
+@media (prefers-reduced-motion:no-preference){
+  .orbicon{animation:orbicon 10s ease-in-out infinite}
+}
+@keyframes orbicon{0%,100%{transform:scale(.55)}40%{transform:scale(1)}}
+
+.versions{margin:22px auto 0;text-align:center}
+.versions .chips{justify-content:center}
+.vnote{font-size:14px;color:var(--stone-2);margin:10px auto 0;max-width:54ch;line-height:1.5}
+.vnote b{font-weight:500;color:var(--stone)}
+
 .legend{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 22px;margin:22px 0 0;padding:0;list-style:none;font-size:14px;color:var(--stone)}
 .legend li{display:flex;align-items:center;gap:8px}
 .legend i{width:9px;height:9px;border-radius:50%;flex:none}
@@ -377,6 +393,7 @@ textarea.notes:focus{border-color:var(--line)}
 .btn:hover{border-color:var(--stone-2)}
 .btn.solid{background:var(--porcelain);color:var(--night);border-color:transparent}
 .btn.solid:hover{filter:brightness(.95)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
 
 .more{margin-top:40px;border-top:1px solid var(--line)}
 .more details{border-bottom:1px solid var(--line)}
@@ -392,6 +409,78 @@ textarea.notes:focus{border-color:var(--line)}
 .yourwords{margin:0 0 16px;color:var(--stone)}
 .loglines div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--stone-2)}
 .rawlink{color:var(--stone);text-underline-offset:3px}
+
+/* ── fix one part ───────────────────────────────── */
+.strip{position:relative;height:76px;margin:16px 0 6px;touch-action:pan-y}
+.strip canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:10px;background:var(--glaze);cursor:crosshair}
+.stripends{display:flex;justify-content:space-between;font-size:13px;color:var(--stone-2);font-variant-numeric:tabular-nums}
+.markrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 4px}
+.btn.small{height:38px;padding:0 15px;font-size:14px}
+.marknote{font-size:14px;color:var(--stone-2);margin-left:4px;font-variant-numeric:tabular-nums}
+.marknote b{font-weight:500;color:var(--porcelain)}
+.partlist{list-style:none;margin:12px 0 0;padding:0}
+.part{
+  display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:0 0 8px;padding:7px 8px 7px 12px;
+  border:1.5px solid var(--line);border-radius:12px;color:var(--stone);cursor:pointer;
+}
+.part.on{border-color:var(--honey);background:var(--glaze-2)}
+.part b{display:flex;flex-direction:column;min-width:50px;font-weight:500;color:var(--porcelain);line-height:1.25}
+.plen{font-size:13px;font-weight:400;color:var(--stone-2);font-variant-numeric:tabular-nums}
+.ptime{
+  width:64px;padding:5px 6px;border-radius:8px;text-align:center;font-variant-numeric:tabular-nums;
+  background:var(--glaze);border:1.5px solid var(--line);outline:none;
+}
+.ptime:focus{border-color:var(--honey)}
+.part .iconbtn:first-of-type{margin-left:auto}
+.iconbtn{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;color:var(--stone)}
+.iconbtn:hover{color:var(--porcelain);background:var(--glaze)}
+.linkbtn.small{margin-top:4px;padding:4px 2px;font-size:14px}
+.partgo{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin-top:20px}
+.partstate{font-size:14px;color:var(--stone);line-height:1.5}
+.partstate.bad{color:var(--danger)}
+.partstate.ok{color:var(--sage)}
+#partBox .checks{margin-top:4px}
+#partBox textarea.notes{min-height:70px}
+
+/* ── breathing guide ────────────────────────────── */
+body.noscroll{overflow:hidden}
+.breathe{
+  position:fixed;inset:0;z-index:20;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  padding:calc(76px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  background:var(--night);
+}
+.bhead{
+  position:absolute;top:calc(14px + env(safe-area-inset-top));left:20px;right:20px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.bname{margin:0;font-family:var(--serif);font-size:20px}
+.bclose{
+  width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+  border:1.5px solid var(--line);color:var(--stone);transition:color .15s ease,border-color .15s ease;
+}
+.bclose:hover{color:var(--porcelain);border-color:var(--stone-2)}
+.bstage{position:relative;flex:none;width:min(340px,80vw,52vh);aspect-ratio:1}
+.bstage svg{position:absolute;inset:0;width:100%;height:100%}
+.orb{
+  position:absolute;inset:13%;border-radius:50%;transform:scale(.64);will-change:transform,opacity;
+  background:radial-gradient(circle at 50% 40%, var(--glaze-2) 0%, var(--glaze) 74%);
+  background:radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--orb, var(--sage)) 34%, var(--glaze-2)) 0%, var(--glaze) 76%);
+  box-shadow:inset 0 0 0 1.5px var(--line);
+}
+@media (prefers-reduced-motion:reduce){
+  .orb{transform:scale(.82)}
+}
+.cue{
+  position:absolute;inset:0;margin:0;display:grid;place-items:center;pointer-events:none;
+  font-family:var(--serif);font-size:clamp(22px,6vw,27px);
+}
+.bplay{display:flex;align-items:center;gap:14px}
+.bplay .time{margin:0;text-align:left;line-height:1.35}
+.bplay .time small{display:block;font-size:14px;color:var(--stone-2)}
+.play.small{position:static;transform:none;width:54px;height:54px;flex:none}
+.paces{justify-content:center}
+.breathe .fine{margin:0 auto;font-size:14px;color:var(--stone-2);text-align:center;max-width:40ch;line-height:1.5}
 
 .center{text-align:center}
 .linkbtn{color:var(--stone);text-decoration:underline;text-underline-offset:4px;margin-top:26px;padding:6px}
@@ -789,6 +878,12 @@ textarea.notes:focus{border-color:var(--line)}
     </button>
   </div>
   <p class="time"><em id="tNow">0:00</em> of <span id="tAll">0:00</span></p>
+  <div class="center"><button class="pill" id="breatheOpen" aria-haspopup="dialog"><i class="orbicon" aria-hidden="true"></i>Breathing guide</button></div>
+
+  <div class="versions" id="versions" hidden>
+    <div class="chips" id="versionChips" role="group" aria-label="Versions of this session"></div>
+    <p class="vnote" id="versionNote" aria-live="polite"></p>
+  </div>
 
   <ul class="legend" id="legend"></ul>
 
@@ -812,6 +907,34 @@ textarea.notes:focus{border-color:var(--line)}
         </div>
         <p class="watch" id="watchNote" hidden></p>
         <button class="btn" id="fixRegen">Fix and regenerate</button>
+      </div>
+    </details>
+    <details id="partBox">
+      <summary>Fix one part</summary>
+      <div class="body">
+        <p>Mark the part that went wrong and say what it was. Only that part is made again, carried in and out by the music around it; the rest of the session stays exactly as it is.</p>
+        <div class="strip"><canvas id="strip" aria-hidden="true"></canvas></div>
+        <div class="stripends"><span>0:00</span><span id="stripEnd">0:00</span></div>
+        <div class="markrow">
+          <button class="btn small" id="markStart">Start here</button>
+          <button class="btn small" id="markEnd">End here</button>
+          <span class="marknote">at <b id="markAt">0:00</b></span>
+        </div>
+        <ul class="partlist" id="partList"></ul>
+        <button class="linkbtn small" id="addPart">Add another part</button>
+        <p class="qnote" id="partHint"></p>
+
+        <p class="sublabel later">What went wrong?</p>
+        <ul class="checks" id="partProblems"></ul>
+
+        <p class="sublabel later"><label for="partNote">Anything else?</label> <small>optional</small></p>
+        <textarea class="notes" id="partNote" rows="2" maxlength="300" placeholder="Softer, just the pads and slow piano, like the minute before it."></textarea>
+        <p class="qnote">Say what it should sound like rather than what to take out: “softer, just pads” works better than “no drums”.</p>
+
+        <div class="partgo">
+          <button class="btn solid" id="partGo" disabled>Regenerate this part</button>
+          <span class="partstate" id="partState" aria-live="polite"></span>
+        </div>
       </div>
     </details>
     <details>
@@ -849,6 +972,30 @@ textarea.notes:focus{border-color:var(--line)}
 </section>
 
 </main>
+
+<!-- ══ breathing guide ══════════════════════════════ -->
+<div class="breathe" id="breathe" role="dialog" aria-modal="true" aria-labelledby="breatheTitle" hidden>
+  <div class="bhead">
+    <p class="bname" id="breatheTitle">Breathing guide</p>
+    <button class="bclose" id="breatheClose" aria-label="Close the breathing guide">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+    </button>
+  </div>
+  <div class="bstage">
+    <svg viewBox="0 0 300 300" id="breatheRing" aria-hidden="true"></svg>
+    <div class="orb" id="orb"></div>
+    <p class="cue" id="cue">Breathe in</p>
+  </div>
+  <div class="bplay">
+    <button class="play small" id="breathePlay" aria-label="Play">
+      <svg id="breathePlayIcon" width="22" height="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"></svg>
+    </button>
+    <p class="time"><em id="bNow">0:00</em> of <span id="bAll">0:00</span><small id="bPhase"></small></p>
+  </div>
+  <div class="chips paces" id="paces" role="group" aria-label="Breathing pace"></div>
+  <p class="fine" id="paceNote"></p>
+  <p class="fine">The circle grows as you breathe in and shrinks as you breathe out. Breathe along only if it feels comfortable; if it doesn’t, breathe normally and just listen.</p>
+</div>
 
 <audio id="audio" preload="metadata"></audio>
 <audio id="loopAudio" preload="none"></audio>
@@ -1124,6 +1271,35 @@ const QUALITY = {
 };
 const CARE_MODES = ['pain_relief', 'dementia', 'depression'];
 
+/* fixing one part: config.INPAINT_*, which every result carries as its limits (these are
+   for results made before it did). One Stable Audio 3 call is at most 360 s here (380 is
+   the model's limit), and a part goes in with up to 30 s of the session on either side
+   as context, so a part is 5 s to 5 min. Ids match pipeline.part_phrases. */
+let PART_MIN_S = 5, PART_MAX_S = 300, PART_MAX = 4, PART_CTX_S = 30;
+const PART_NEW_S = 20;      // a part marked with one press of Start here or End here
+// every mode lists these after its own Troubleshooting problems
+const PART_SHARED = [
+  { id:'glitch',  name:'A click, crackle or glitch' },
+  { id:'jarring', name:'Doesn’t match the music around it' },
+];
+// ISO sessions have no guideline table of their own (pipeline.ISO_PART_FIXES)
+const ISO_PART_FIXES = [
+  { id:'percussion', name:'Drums or rhythmic hits' },
+  { id:'voices',     name:'Voices or words' },
+  { id:'harsh',      name:'Harsh or too bright' },
+  { id:'loud',       name:'A sudden loud moment' },
+  { id:'busy',       name:'Too busy or cluttered' },
+  { id:'dark',       name:'Sad, dark or eerie' },
+];
+
+/* breathing guide paces. 4 in, 6 out is about six breaths a minute, the slow cycle the
+   pain relief prompts phrase the music in (bpm / 6 beats a phrase: 4 in, 6 out at 60 BPM). */
+const PACES = [
+  { id:'4-6', name:'4 in, 6 out', inS:4, outS:6 },
+  { id:'3-4', name:'3 in, 4 out', inS:3, outS:4 },
+  { id:'5-7', name:'5 in, 7 out', inS:5, outS:7 },
+];
+
 const PHASES = {
   match:      { color:'--ember', label:'Meets you',   step:'Composing the opening', text:'Matched to how you feel right now.' },
   transition: { color:'--rose',  label:'Eases you',   step:'Composing the bridge',  text:'Slowly carrying you toward your goal.' },
@@ -1226,6 +1402,7 @@ const state = {
   pain:{ ...PAIN_DEFAULTS },
   dementia:{ ...DM_DEFAULTS },
   depression:{ ...DP_DEFAULTS },
+  breathPace:'4-6',
 };
 try { Object.assign(state, JSON.parse(localStorage.getItem('resonalife:prefs') || '{}')); } catch {}
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -1239,9 +1416,10 @@ state.depression = { ...DP_DEFAULTS, ...(isObj(state.depression) ? state.depress
   if (!isObj(s.profile)) s.profile = {};
 });
 if (!['guided', 'own', 'pain', 'dementia', 'depression'].includes(state.mode)) state.mode = 'guided';
+if (!PACES.some(p => p.id === state.breathPace)) state.breathPace = '4-6';
 const save = () => { try { localStorage.setItem('resonalife:prefs', JSON.stringify(state)); } catch {} };
 
-let pollTimer = null, tickTimer = null, breathTimer = null, startedAt = 0;
+let pollTimer = null, tickTimer = null, startedAt = 0;
 let lastRequest = null, lastSeed = null, lastMode = 'iso', lastOptions = null, shownJob = null;
 
 /* ── mode ────────────────────────────────────────── */
@@ -2018,7 +2196,9 @@ async function loadRecent(){
       const m = document.createElement('span');
       t.className = 'rtitle'; t.textContent = titleOf(j.request);
       m.className = 'rmeta ' + j.status;
-      m.textContent = j.status === 'done' && j.result ? mmss(j.result.duration_s) : (STATUS_WORD[j.status] || j.status);
+      m.textContent = j.status === 'done' && j.result
+        ? mmss(j.result.duration_s) + (j.versions > 1 ? ` · ${j.versions} versions` : '')
+        : (STATUS_WORD[j.status] || j.status);
       b.append(t, m);
       b.onclick = () => openJob(j.id);
       li.append(b); ul.append(li);
@@ -2037,6 +2217,7 @@ function show(id){
 
 function toCompose(){
   clearInterval(pollTimer); clearInterval(tickTimer);
+  closeGuide(); stopFix();
   stopAudio();
   show('sCompose');
   loadRecent();
@@ -2106,22 +2287,34 @@ async function poll(id){
   waiting(job);
 }
 
-/* ── creating screen ─────────────────────────────── */
-function startBreath(){
-  stopBreath();
-  const el = $('breath'), txt = $('breathText');
-  if (reducedMotion) { txt.textContent = 'Breathe slowly'; return; }
-  el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
-  const cycle = () => {
-    txt.textContent = 'Breathe in';
-    breathTimer = setTimeout(() => {
-      txt.textContent = 'Breathe out';
-      breathTimer = setTimeout(cycle, 6000);
-    }, 4000);
+/* ── breathing ───────────────────────────────────── */
+// One clock drives the words and the size together, so "Breathe in" always shows while
+// the circle grows and "Breathe out" while it shrinks, however long it runs or however
+// often the tab sleeps. Each breath eases in and out the way a real one does. With
+// reduced motion the circle doesn't move: it brightens and dims instead.
+function breather(el, textEl, lo, hi){
+  let raf = 0, t0 = 0, pace = PACES[0], word = '';
+  const frame = now => {
+    const inMs = pace.inS * 1000, cycle = inMs + pace.outS * 1000;
+    const t = (now - t0) % cycle, inhale = t < inMs;
+    const ease = 0.5 - 0.5 * Math.cos(Math.PI * (inhale ? t / inMs : (t - inMs) / (cycle - inMs)));
+    const k = inhale ? ease : 1 - ease;                  // 0 breathed out, 1 breathed in
+    if (reducedMotion) el.style.opacity = (0.45 + 0.55 * k).toFixed(3);
+    else el.style.transform = `scale(${(lo + (hi - lo) * k).toFixed(4)})`;
+    const w = inhale ? 'Breathe in' : 'Breathe out';
+    if (w !== word) textEl.textContent = word = w;
+    raf = requestAnimationFrame(frame);
   };
-  cycle();
+  return {
+    start(p){ cancelAnimationFrame(raf); pace = p || pace; word = ''; t0 = performance.now(); raf = requestAnimationFrame(frame); },
+    stop(){ cancelAnimationFrame(raf); raf = 0; el.style.transform = ''; el.style.opacity = ''; },
+  };
 }
-function stopBreath(){ clearTimeout(breathTimer); $('breath').classList.remove('go'); }
+
+/* ── creating screen ─────────────────────────────── */
+const waitBreath = breather($('breath'), $('breathText'), 0.84, 1);
+function startBreath(){ waitBreath.start(PACES[0]); }
+function stopBreath(){ waitBreath.stop(); }
 
 function arcPath(cx, cy, r, a0, a1){
   const pt = a => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
@@ -2233,6 +2426,7 @@ function phaseBlock(name, text, extra, ending){
 
 /* ── listen screen ───────────────────────────────── */
 let peaks = [], bounds = [], sessionTitle = '';
+let versions = [], current = null;       // every version of the shown session, and the one playing
 
 function listen(job){
   const r = job.result;
@@ -2248,7 +2442,12 @@ function listen(job){
   showWords($('doneWords'), job.request);
   showSettings($('doneSettings'), job);
 
-  peaks = r.peaks || [];
+  // the version last listened to here, else the newest
+  versions = sortVersions(job.versions && job.versions.length ? job.versions : [r]);
+  let pick = null;
+  try { pick = Number(localStorage.getItem('resonalife:version:' + job.id)); } catch {}
+  const chosen = versions.find(v => (v.version || 1) === pick) || versions[versions.length - 1];
+
   const total = r.segments.reduce((a, s) => a + s.duration_s, 0) || 1;
   let acc = 0;
   bounds = r.segments.map(s => { acc += s.duration_s; return { end: acc / total, color: phaseColor(s.name) }; });
@@ -2266,35 +2465,94 @@ function listen(job){
     if (r.prompts && r.prompts[k]) donePrompts.append(phaseBlock(k, r.prompts[k], mmss(secs), ending));
   });
 
-  $('loopCheck').hidden = !r.loop_check_url;
   $('loopNote').hidden = ending !== 'loop';
-  if (r.loop_check_url) $('loopAudio').src = r.loop_check_url; else $('loopAudio').removeAttribute('src');
   $('reviewBox').hidden = !care;
   if (care) renderChecklist(job);
 
   const a = $('audio');
-  a.loop = ending === 'loop';
-  a.src = r.audio_url;
-  $('tAll').textContent = mmss(r.duration_s);
-  a.onloadedmetadata = () => { $('tAll').textContent = mmss(a.duration || r.duration_s); };
   a.ontimeupdate = () => {
     $('tNow').textContent = mmss(a.currentTime);
-    drawWave(progress());
+    $('markAt').textContent = mmss(a.currentTime);
+    if (fix.stopAt !== null && a.currentTime >= fix.stopAt) { fix.stopAt = null; a.pause(); }
+    drawWave(progress()); drawStrip(); updateGuide();
   };
   a.onplay = () => setPlayIcon(true);
   a.onpause = () => setPlayIcon(false);
   a.onended = () => setPlayIcon(false);
+
+  resetFix(job, r);
+  showVersion(chosen);
+
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: sessionTitle, artist: 'ResonaLife' });
+  }
+}
+
+// Play one version of the session. Every version shares the session's plan, so only the
+// audio, the waveform and the downloads change. at/play carry the playback position over,
+// so switching versions compares them at the same moment.
+function showVersion(r, { at = 0, play = false } = {}){
+  const a = $('audio');
+  current = r;
+  try { localStorage.setItem('resonalife:version:' + shownJob.id, String(r.version || 1)); } catch {}
+  peaks = r.peaks || [];
+  fix.stopAt = null;
+  a.loop = r.ending === 'loop';
+  a.onloadedmetadata = () => {
+    $('tAll').textContent = mmss(a.duration || r.duration_s);
+    if (at) a.currentTime = Math.min(at, Math.max(0, (a.duration || r.duration_s) - 0.5));
+    if (play) a.play().catch(() => {});
+    drawWave(progress()); drawStrip(); updateGuide();
+  };
+  a.src = r.audio_url;
   setPlayIcon(false);
+  $('tNow').textContent = mmss(at);
+  $('markAt').textContent = mmss(at);
+  $('tAll').textContent = mmss(r.duration_s);
+  $('stripEnd').textContent = mmss(r.duration_s);
 
   $('dlMp3').href = r.audio_url;
   $('dlWav').href = r.download_url;
   $('dlRaw').href = r.raw_url;
   $('dlMp3').hidden = !/\.mp3$/i.test(r.audio_url);
+  $('loopCheck').hidden = !r.loop_check_url;
+  if (r.loop_check_url) $('loopAudio').src = r.loop_check_url; else $('loopAudio').removeAttribute('src');
 
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: sessionTitle, artist: 'ResonaLife' });
+  renderVersions();
+  requestAnimationFrame(() => { drawWave(progress()); drawStrip(); updateGuide(); });
+}
+
+const sortVersions = list => [...list].sort((x, y) => (x.version || 1) - (y.version || 1));
+const versionName = v => (v.version || 1) === 1 ? 'Original' : `Fix ${Math.max(1, versions.indexOf(v))}`;
+
+function renderVersions(){
+  $('versions').hidden = versions.length < 2;
+  if (versions.length < 2) return;
+  const row = $('versionChips'); row.innerHTML = '';
+  versions.forEach(v => row.append(button('chip', versionName(v), v === current, () => {
+    if (v === current) return;
+    const a = $('audio');
+    showVersion(v, { at: a.currentTime, play: !a.paused });
+  })));
+  $('versionNote').textContent = versionText(current);
+}
+
+// "3:10–3:40 made again from the original, for: drums or rhythmic hits. Your words: “softer”."
+function versionText(v){
+  if ((v.version || 1) === 1) return 'The session as it was first made.';
+  const from = versions.find(x => (x.version || 1) === (v.base_version || 1));
+  const parts = (v.parts || []).map(p => `${mmss(p.start_s)}–${mmss(p.end_s)}`);
+  let t = `${listJoin(parts) || 'Part of the session'} made again from `
+        + (!from ? 'an earlier version' : (from.version || 1) === 1 ? 'the original' : versionName(from));
+  const names = (v.fixes || []).map(id => (partProblems(v).find(f => f.id === id) || {}).name).filter(Boolean);
+  if (names.length) t += `, for: ${names.join(', ').toLowerCase()}`;
+  t += '.';
+  if (v.note) t += ` Your words: “${v.note}”.`;
+  if (v.left_out && v.left_out.length) {
+    t += ` Left out of the prompt: ${v.left_out.map(x => `“${x.replace(/[\s,;:.]+$/, '')}”`).join(', ')}.`
+       + ' Say what it should sound like instead.';
   }
-  requestAnimationFrame(() => drawWave(0));
+  return t;
 }
 
 function progress(){
@@ -2339,6 +2597,23 @@ function drawWave(prog){
     ctx.lineTo(cx + Math.cos(ang) * (inner + len), cy + Math.sin(ang) * (inner + len));
     ctx.stroke();
   }
+
+  // round the rim: the parts marked for a fix, and fainter, the parts this version made again
+  const d = sessionLength();
+  if (d) {
+    const rim = inner + reach + Math.max(5, size / 70);
+    const arc = (s, e) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, rim, s / d * Math.PI * 2 - Math.PI / 2, e / d * Math.PI * 2 - Math.PI / 2);
+      ctx.stroke();
+    };
+    ctx.strokeStyle = css('--honey');
+    ctx.lineWidth = Math.max(2.5, size / 130);
+    ctx.globalAlpha = 0.4;
+    ((current && current.parts) || []).forEach(p => arc(p.start_s, p.end_s));
+    ctx.globalAlpha = 1;
+    fix.parts.forEach(p => arc(p.s, p.e));
+  }
   ctx.globalAlpha = 1;
 
   c.setAttribute('aria-valuenow', Math.round(prog * 100));
@@ -2346,10 +2621,13 @@ function drawWave(prog){
 }
 
 function setPlayIcon(playing){
-  $('playIcon').innerHTML = playing
+  const icon = playing
     ? '<rect x="4" y="2.6" width="3" height="10.8" rx="1"/><rect x="9" y="2.6" width="3" height="10.8" rx="1"/>'
     : '<path d="M5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.92 2.1a.6.6 0 0 0-.92.5Z"/>';
+  $('playIcon').innerHTML = icon;
+  $('breathePlayIcon').innerHTML = icon;
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  $('breathePlay').setAttribute('aria-label', playing ? 'Pause' : 'Play');
 }
 
 function stopAudio(){
@@ -2399,7 +2677,439 @@ function updateCheckState(){
   el.className = 'checkstate' + (done === boxes.length ? ' ok' : '');
   el.textContent = done === boxes.length
     ? 'Every check passes. It is ready to play.'
-    : `${done} of ${boxes.length} checked. If any check fails, regenerate the session rather than playing it.`;
+    : `${done} of ${boxes.length} checked. If a check fails in one place, fix that part below; if it fails throughout, regenerate the session rather than playing it.`;
+}
+
+/* ── fix one part ────────────────────────────────── */
+// Parts are {s, e} in seconds on the session's timeline, kept in order and never
+// overlapping. The active one is what Start here and End here move.
+const fix = { parts:[], active:null, job:null, timer:null, since:0, stopAt:null };
+let drag = null;
+
+const sessionLength = () => { const a = $('audio'); return a.duration || (current && current.duration_s) || 0; };
+const sortParts = () => fix.parts.sort((x, y) => x.s - y.s);
+// the room a part can grow into: from the end of the part before it to the start of the next
+function room(p){
+  const i = fix.parts.indexOf(p);
+  return [i > 0 ? fix.parts[i - 1].e : 0, i < fix.parts.length - 1 ? fix.parts[i + 1].s : sessionLength()];
+}
+// the gap between parts that t falls in, or null if t is inside a part
+function gapAt(t){
+  if (fix.parts.some(q => q.s < t && t < q.e)) return null;
+  let lo = 0, hi = sessionLength();
+  fix.parts.forEach(q => { if (q.e <= t) lo = Math.max(lo, q.e); if (q.s >= t) hi = Math.min(hi, q.s); });
+  return [lo, hi];
+}
+
+// a new part starting (or, for 'end', ending) at t, PART_NEW_S long where there is room
+function newPart(t, anchor){
+  if (fix.parts.length >= PART_MAX) { partState(`Up to ${PART_MAX} parts at a time. Remove one to add another.`); return null; }
+  const gap = gapAt(t);
+  if (!gap) return null;
+  const [lo, hi] = gap;
+  let s, e;
+  if (anchor === 'end') { e = t; s = Math.max(lo, t - PART_NEW_S); if (e - s < PART_MIN_S) e = Math.min(hi, s + PART_MIN_S); }
+  else { s = t; e = Math.min(hi, t + PART_NEW_S); if (e - s < PART_MIN_S) s = Math.max(lo, e - PART_MIN_S); }
+  if (e - s < PART_MIN_S) { partState(`There isn’t room for a ${PART_MIN_S}-second part there.`); return null; }
+  const p = { s, e };
+  fix.parts.push(p); sortParts(); fix.active = p;
+  tidy(p);
+  return p;
+}
+
+// move one edge to t; the other edge follows if the part would pass PART_MAX_S
+function setEdge(p, edge, t){
+  const [lo, hi] = room(p);
+  if (edge === 'start') {
+    p.s = within(t, lo, p.e - PART_MIN_S);
+    if (p.e - p.s > PART_MAX_S) p.e = p.s + PART_MAX_S;
+  } else {
+    p.e = within(t, p.s + PART_MIN_S, hi);
+    if (p.e - p.s > PART_MAX_S) p.s = p.e - PART_MAX_S;
+  }
+}
+
+// whole seconds, at least PART_MIN_S, at most PART_MAX_S, inside the session
+function tidy(p){
+  const d = sessionLength();
+  p.s = Math.max(0, Math.round(p.s));
+  p.e = p.e >= d - 0.5 ? d : Math.round(p.e);
+  if (p.e - p.s < PART_MIN_S) {
+    const [lo, hi] = room(p);
+    if (p.s + PART_MIN_S <= hi) p.e = p.s + PART_MIN_S; else p.s = Math.max(lo, p.e - PART_MIN_S);
+  }
+  if (p.e - p.s > PART_MAX_S) p.e = p.s + PART_MAX_S;
+}
+
+function markStart(t){
+  const inside = fix.parts.find(q => q.s <= t && t < q.e);
+  if (inside) { fix.active = inside; setEdge(inside, 'start', t); tidy(inside); }
+  else newPart(t, 'start');
+  renderParts();
+}
+function markEnd(t){
+  const p = fix.active;
+  const inside = fix.parts.find(q => q.s < t && t <= q.e);
+  if (inside) { fix.active = inside; setEdge(inside, 'end', t); tidy(inside); }
+  else if (p && t > p.s && t <= room(p)[1]) { setEdge(p, 'end', t); tidy(p); }
+  else newPart(t, 'end');
+  renderParts();
+}
+
+// "3:10", "190", "1:02:03" -> seconds
+function parseTime(text){
+  const bits = String(text).trim().split(':');
+  if (!bits.length || bits.length > 3 || bits.some(b => !/^\d+(\.\d+)?$/.test(b))) return NaN;
+  return bits.reduce((acc, b) => acc * 60 + Number(b), 0);
+}
+
+function playPart(p){
+  const a = $('audio');
+  if (!a.duration) return;
+  $('loopAudio').pause();
+  a.currentTime = Math.max(0, p.s - 2);
+  a.play().catch(() => {});
+  fix.stopAt = p.e + 1.5;        // set after the seek: two seconds in, a second and a half out
+}
+
+function partState(text, kind){
+  const el = $('partState');
+  el.textContent = text || '';
+  el.className = 'partstate' + (kind ? ' ' + kind : '');
+}
+
+// the strip, the bowl, the list of parts and the button
+function renderParts(){
+  drawStrip(); drawWave(progress());
+  const list = $('partList');
+  const typing = list.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
+  if (!typing) {
+    // the control pressed is rebuilt with the list: focus its new copy (or, if its part
+    // was removed, Start here)
+    const focused = list.contains(document.activeElement) ? document.activeElement.getAttribute('aria-label') : null;
+    list.innerHTML = '';
+    fix.parts.forEach((p, i) => {
+      const li = document.createElement('li');
+      li.className = 'part' + (p === fix.active ? ' on' : '');
+      const name = Object.assign(document.createElement('b'), { textContent:`Part ${i + 1}` });
+      name.append(Object.assign(document.createElement('span'), { className:'plen', textContent:mmss(p.e - p.s) }));
+      const time = (edge, label) => {
+        const input = document.createElement('input');
+        input.className = 'ptime'; input.type = 'text'; input.inputMode = 'numeric';
+        input.value = mmss(edge === 'start' ? p.s : p.e);
+        input.setAttribute('aria-label', `Part ${i + 1} ${label}`);
+        input.onfocus = () => { fix.active = p; li.classList.add('on'); };
+        input.onchange = () => {
+          const t = parseTime(input.value);
+          if (isFinite(t)) { setEdge(p, edge, t); tidy(p); }
+          input.blur(); renderParts();
+        };
+        input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } };
+        input.onblur = () => requestAnimationFrame(renderParts);
+        return input;
+      };
+      const icon = (svg, label, onclick) => {
+        const b = document.createElement('button');
+        b.className = 'iconbtn'; b.innerHTML = svg; b.setAttribute('aria-label', label);
+        b.onclick = e => { e.stopPropagation(); onclick(); };
+        return b;
+      };
+      const play = icon('<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 2.6v10.8a.6.6 0 0 0 .92.5l8.2-5.4a.6.6 0 0 0 0-1L5.92 2.1a.6.6 0 0 0-.92.5Z"/></svg>',
+                        `Play part ${i + 1}`, () => { fix.active = p; playPart(p); renderParts(); });
+      const del = icon('<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>',
+                       `Remove part ${i + 1}`, () => {
+                         fix.parts = fix.parts.filter(q => q !== p);
+                         if (fix.active === p) fix.active = fix.parts[fix.parts.length - 1] || null;
+                         renderParts();
+                       });
+      li.onclick = () => { fix.active = p; renderParts(); };
+      li.append(name, time('start', 'start'), '–', time('end', 'end'), play, del);
+      list.append(li);
+    });
+    if (focused) ([...list.querySelectorAll('[aria-label]')].find(el => el.getAttribute('aria-label') === focused) || $('markStart')).focus();
+  }
+  const n = fix.parts.length;
+  $('addPart').hidden = n === 0 || n >= PART_MAX;
+  $('partGo').textContent = fix.job ? 'Regenerating…' : n > 1 ? `Regenerate these ${n} parts` : 'Regenerate this part';
+  $('partGo').disabled = !n || !!fix.job;
+}
+
+function applyLimits(r){
+  const l = (r && r.limits) || {};
+  PART_MIN_S = l.part_min_s || 5; PART_MAX_S = l.part_max_s || 300;
+  PART_MAX = l.max_parts || 4; PART_CTX_S = l.context_s || 30;
+}
+
+function resetFix(job, r){
+  stopFix();
+  applyLimits(r);
+  fix.parts = []; fix.active = null; drag = null;
+  partState('');
+  $('partNote').value = '';
+  const most = PART_MAX_S % 60 ? mmss(PART_MAX_S) : `${PART_MAX_S / 60} minutes`;
+  $('partHint').textContent = 'Drag across the waveform, or press Start here and End here while it plays. '
+    + `A part can be ${PART_MIN_S} seconds to ${most}, up to ${PART_MAX} at a time: Stable Audio 3 makes at most `
+    + `6 min 20 s in one go, and each part goes in with up to ${PART_CTX_S} seconds of the music on either side so it joins seamlessly. `
+    + 'Select a little more than you heard; a very short part comes back close to the original.';
+  const ul = $('partProblems'); ul.innerHTML = '';
+  partProblems(r).forEach(f => {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    const box = Object.assign(document.createElement('input'), { type:'checkbox', value:f.id });
+    label.append(box, Object.assign(document.createElement('span'), { textContent:f.name }));
+    li.append(label); ul.append(li);
+  });
+  renderParts();
+  // a fix still being made when the page was closed carries on here
+  if (job.pending_fix) {
+    fetch('/jobs/' + job.pending_fix).then(res => res.ok ? res.json() : null).then(j => {
+      if (j && shownJob === job && (j.status === 'queued' || j.status === 'running')) {
+        $('partBox').open = true;        // so its progress shows
+        watchFix(j.id);
+      }
+    }).catch(() => {});
+  }
+}
+
+// the problems a part of this session can have: the module's Troubleshooting list, then
+// the two every mode shares. Percussion in a session with none is named for what it is.
+function partProblems(r){
+  const o = (r && r.settings) || {};
+  const noPercussion = f => f.id === 'percussion' && o.percussion !== 'light' ? { ...f, name:'Drums or percussion appear' } : f;
+  let list;
+  if (r.mode === 'pain_relief') list = PAIN_FIXES;
+  else if (r.mode === 'dementia') list = DM_FIXES.filter(f => !f.calming || o.session_mode === 'calming').map(noPercussion);
+  else if (r.mode === 'depression') list = DP_FIXES.filter(f => (!f.activation || o.session_mode === 'activation')
+                                                          && (!f.modes || f.modes.includes(o.session_mode))).map(noPercussion);
+  else list = ISO_PART_FIXES;
+  return [...list, ...PART_SHARED];
+}
+
+async function submitFix(){
+  if (!fix.parts.length || fix.job || !shownJob || !current) return;
+  const body = {
+    job_id: shownJob.id,
+    version: current.version || 1,
+    parts: fix.parts.map(p => [Math.round(p.s * 10) / 10, Math.round(p.e * 10) / 10]),
+    fixes: [...$('partProblems').querySelectorAll('input:checked')].map(b => b.value),
+    note: $('partNote').value.trim(),
+  };
+  $('partGo').disabled = true;
+  partState('Sending…');
+  try {
+    const r = await fetch('/inpaint', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+    if (!r.ok) {
+      const b = await r.json().catch(() => ({}));
+      const detail = Array.isArray(b.detail) ? b.detail.map(x => x.msg).join('; ') : b.detail;
+      throw new Error(detail || `The server answered with status ${r.status}. Try again in a moment.`);
+    }
+    watchFix((await r.json()).job_id);
+  } catch (e) {
+    partState(/fetch|network/i.test(e.message) ? 'The server could not be reached. Check your connection and try again.' : e.message, 'bad');
+    renderParts();
+  }
+}
+
+function watchFix(id){
+  clearInterval(fix.timer);
+  fix.job = id; fix.since = Date.now();
+  renderParts();
+  pollFix();
+  fix.timer = setInterval(pollFix, 2000);
+}
+function stopFix(){
+  clearInterval(fix.timer);
+  fix.timer = null; fix.job = null;
+}
+
+async function pollFix(){
+  const id = fix.job;
+  if (!id) return;
+  let job;
+  try {
+    const r = await fetch('/jobs/' + id);
+    if (r.status === 404) { stopFix(); partState('That fix is no longer on the server. Try again.', 'bad'); renderParts(); return; }
+    if (!r.ok) return;            // transient: keep polling
+    job = await r.json();
+  } catch { return; }
+  if (fix.job !== id) return;     // another session was opened meanwhile
+  if (job.status === 'done' && job.result) return fixDone(job);
+  if (job.status === 'error') {
+    stopFix(); renderParts();
+    partState(job.error || 'The part could not be regenerated. Try again.', 'bad');
+    return;
+  }
+  const waited = mmss((Date.now() - fix.since) / 1000);
+  const p = job.progress;
+  partState(job.status === 'queued' ? `Waiting for the studio · ${waited}. After a quiet spell this takes a minute or two.`
+          : p && p.total > 1 ? `Regenerating part ${p.segment} of ${p.total} · ${waited}`
+          : `Regenerating · ${waited}`);
+}
+
+async function fixDone(job){
+  stopFix();
+  const session = shownJob;
+  let fresh = null;              // the session's own job, which now lists the new version
+  try { const r = await fetch('/jobs/' + session.id); if (r.ok) fresh = await r.json(); } catch {}
+  if (shownJob !== session) return;
+  if (fresh && fresh.versions) { shownJob = fresh; versions = sortVersions(fresh.versions); }
+  else versions = sortVersions([...versions, job.result]);
+  const made = versions.find(v => (v.version || 1) === job.result.version) || job.result;
+  const a = $('audio'), playing = !a.paused;
+  const first = (made.parts || [])[0];
+  showVersion(made, { at: first ? Math.max(0, first.start_s - 4) : a.currentTime, play: playing });
+  fix.parts = []; fix.active = null;
+  $('partProblems').querySelectorAll('input').forEach(b => { b.checked = false; });
+  $('partNote').value = '';
+  renderParts();
+  const from = versions.find(v => (v.version || 1) === (made.base_version || 1));
+  partState(`${versionName(made)} is ${playing ? 'playing' : 'ready'} from just before the new part. To compare, `
+          + `switch between ${from ? versionName(from) : 'the versions'} and ${versionName(made)} under the player.`, 'ok');
+}
+
+// the session as a strip: phase-coloured bars, the parts marked, the playhead
+function drawStrip(){
+  const c = $('strip');
+  const w = c.clientWidth, h = c.clientHeight;
+  if (w < 40 || !current) return;          // folded away
+  const dpr = window.devicePixelRatio || 1;
+  c.width = w * dpr; c.height = h * dpr;
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const d = sessionLength(), prog = progress();
+  const x = t => d ? t / d * w : 0;
+
+  const n = Math.max(60, Math.floor(w / 3)), barW = Math.max(1, w / n - 1);
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(i / n * peaks.length), b = Math.max(a + 1, Math.floor((i + 1) / n * peaks.length));
+    let v = 0;
+    for (let k = a; k < b && k < peaks.length; k++) v = Math.max(v, peaks[k]);
+    const frac = (i + 0.5) / n, bh = 3 + v * (h - 18);
+    const seg = bounds.find(bd => frac <= bd.end) || bounds[bounds.length - 1];
+    ctx.fillStyle = seg ? seg.color : css('--stone');
+    ctx.globalAlpha = frac <= prog ? 1 : 0.42;
+    ctx.fillRect(i * w / n, (h - bh) / 2, barW, bh);
+  }
+
+  const honey = css('--honey');
+  ctx.fillStyle = honey;
+  ctx.globalAlpha = 0.55;                   // what this version made again: a line along the bottom
+  ((current && current.parts) || []).forEach(p => ctx.fillRect(x(p.start_s), h - 3, Math.max(2, x(p.end_s) - x(p.start_s)), 3));
+  fix.parts.forEach(p => {
+    const x0 = x(p.s), x1 = x(p.e);
+    ctx.fillStyle = honey;
+    ctx.globalAlpha = p === fix.active ? 0.24 : 0.13;
+    ctx.fillRect(x0, 0, x1 - x0, h);
+    ctx.globalAlpha = 1;
+    ctx.fillRect(x0 - 1, 0, 2, h); ctx.fillRect(x1 - 1, 0, 2, h);
+    ctx.fillRect(x0 - 3, h / 2 - 9, 6, 18); ctx.fillRect(x1 - 3, h / 2 - 9, 6, 18);   // grips
+  });
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = css('--porcelain');
+  ctx.fillRect(Math.min(w - 2, Math.max(0, prog * w - 1)), 0, 2, h);
+}
+
+// what's under the pointer on the strip: a part's edge, a part, or the empty session
+function stripHit(t, tol){
+  let best = null;
+  fix.parts.forEach(p => {
+    [['start', p.s], ['end', p.e]].forEach(([mode, at]) => {
+      const dist = Math.abs(t - at);
+      if (dist <= tol && (!best || dist < best.dist)) best = { p, mode, dist };
+    });
+  });
+  if (best) return best;
+  const p = fix.parts.find(q => q.s < t && t < q.e);
+  return p ? { p, mode:'move' } : null;
+}
+function stripTime(e){
+  const r = $('strip').getBoundingClientRect();
+  return within((e.clientX - r.left) / r.width, 0, 1) * sessionLength();
+}
+
+/* ── breathing guide ─────────────────────────────── */
+const guide = breather($('orb'), $('cue'), 0.64, 1);   // at its smallest the words still fit inside
+let guideFrom = null, wakeLock = null;
+const paceOf = id => PACES.find(p => p.id === id) || PACES[0];
+
+function renderPaces(){
+  chipGroup($('paces'), PACES, state.breathPace, id => {
+    state.breathPace = id; save(); renderPaces(); guide.start(paceOf(id));
+  });
+  const p = paceOf(state.breathPace);
+  $('paceNote').textContent = `About ${Math.round(60 / (p.inS + p.outS))} breaths a minute.`;
+}
+
+function openGuide(){
+  guideFrom = document.activeElement;
+  $('breathe').hidden = false;
+  document.body.classList.add('noscroll');
+  renderPaces();
+  guide.start(paceOf(state.breathPace));
+  updateGuide();
+  $('breatheClose').focus();
+  lockScreen();
+}
+function closeGuide(){
+  if ($('breathe').hidden) return;
+  $('breathe').hidden = true;
+  document.body.classList.remove('noscroll');
+  guide.stop();
+  releaseScreen();
+  if (guideFrom && document.contains(guideFrom)) guideFrom.focus();
+}
+
+// phases as fractions of the session, neighbouring chunks of one phase joined
+function phaseSpans(r){
+  const total = r.segments.reduce((a, s) => a + s.duration_s, 0) || 1;
+  const spans = [];
+  let acc = 0;
+  r.segments.forEach(s => {
+    const a = acc / total, name = base(s.name);
+    acc += s.duration_s;
+    const last = spans[spans.length - 1];
+    if (last && last.name === name) last.b = acc / total; else spans.push({ name, a, b: acc / total });
+  });
+  return spans;
+}
+
+// the session ring round the circle, the time and the phase playing now
+function updateGuide(){
+  if ($('breathe').hidden || !current) return;
+  const prog = progress(), spans = phaseSpans(current);
+  const svg = $('breatheRing'); svg.innerHTML = '';
+  const gap = spans.length > 1 ? 4 : 0;
+  spans.forEach(sp => {
+    const a0 = sp.a * 360 + gap / 2, a1 = sp.b * 360 - gap / 2 - (spans.length === 1 ? 0.01 : 0);
+    [[a1, 0.28], [Math.min(a1, prog * 360), 1]].forEach(([to, opacity]) => {
+      if (to - a0 < 0.3) return;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', arcPath(150, 150, 143, a0, to));
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', phaseColor(sp.name));
+      path.setAttribute('stroke-width', '5');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('opacity', opacity);
+      svg.append(path);
+    });
+  });
+  $('bNow').textContent = $('tNow').textContent;
+  $('bAll').textContent = $('tAll').textContent;
+  const now = spans.find(sp => prog < sp.b) || spans[spans.length - 1];
+  if (now) {
+    $('bPhase').textContent = phaseInfo(now.name, current.ending).label;
+    $('orb').style.setProperty('--orb', phaseColor(now.name));
+  }
+}
+
+// keep the screen on while the guide is open; the browser drops the lock when the tab hides
+async function lockScreen(){
+  try { if ('wakeLock' in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+function releaseScreen(){
+  try { if (wakeLock) wakeLock.release(); } catch {}
+  wakeLock = null;
 }
 
 /* ── error screen ────────────────────────────────── */
@@ -2526,6 +3236,7 @@ $('home').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.prevent
 $('play').onclick = () => {
   const a = $('audio');
   $('loopAudio').pause();
+  fix.stopAt = null;
   if (a.paused) a.play(); else a.pause();
 };
 
@@ -2538,8 +3249,9 @@ $('wave').addEventListener('click', e => {
   if (Math.hypot(dx, dy) < rect.width * 0.2) return;   // centre belongs to the play button
   let ang = Math.atan2(dy, dx) + Math.PI / 2;
   if (ang < 0) ang += Math.PI * 2;
+  fix.stopAt = null;
   a.currentTime = (ang / (Math.PI * 2)) * a.duration;
-  drawWave(progress());
+  drawWave(progress()); drawStrip();
 });
 $('wave').addEventListener('keydown', e => {
   const a = $('audio');
@@ -2552,8 +3264,106 @@ $('wave').addEventListener('keydown', e => {
   drawWave(progress());
 });
 
+/* fix one part: drag across the strip to mark a part, drag its edges or middle to change
+   it; a tap plays from there */
+$('strip').addEventListener('pointerdown', e => {
+  if (!sessionLength() || e.button > 0) return;
+  const r = $('strip').getBoundingClientRect();
+  const t = stripTime(e), hit = stripHit(t, 10 / r.width * sessionLength());
+  drag = hit ? { ...hit, t0:t, x0:e.clientX, s0:hit.p.s, e0:hit.p.e, moved:false }
+             : { mode:'new', p:null, t0:t, x0:e.clientX, moved:false };
+  if (hit) { fix.active = hit.p; renderParts(); }
+  $('strip').setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+$('strip').addEventListener('pointermove', e => {
+  const c = $('strip');
+  if (!drag) {
+    if (e.pointerType === 'mouse' && sessionLength()) {
+      const hit = stripHit(stripTime(e), 10 / c.getBoundingClientRect().width * sessionLength());
+      c.style.cursor = !hit ? 'crosshair' : hit.mode === 'move' ? 'grab' : 'ew-resize';
+    }
+    return;
+  }
+  if (!drag.moved && Math.abs(e.clientX - drag.x0) < 4) return;
+  drag.moved = true;
+  const t = stripTime(e);
+  if (drag.mode === 'new') {
+    if (!drag.p) {
+      const gap = gapAt(drag.t0);
+      if (!gap || fix.parts.length >= PART_MAX) {
+        if (fix.parts.length >= PART_MAX) partState(`Up to ${PART_MAX} parts at a time. Remove one to add another.`);
+        drag = null;
+        return;
+      }
+      drag.p = { s:drag.t0, e:drag.t0 };
+      drag.gap = gap;
+      fix.parts.push(drag.p); sortParts(); fix.active = drag.p;
+    }
+    const [lo, hi] = drag.gap;
+    if (t >= drag.t0) { drag.p.s = drag.t0; drag.p.e = Math.min(within(t, lo, hi), drag.t0 + PART_MAX_S); }
+    else { drag.p.e = drag.t0; drag.p.s = Math.max(within(t, lo, hi), drag.t0 - PART_MAX_S); }
+  } else if (drag.mode === 'move') {
+    const len = drag.e0 - drag.s0, [lo, hi] = room(drag.p);
+    drag.p.s = within(drag.s0 + t - drag.t0, lo, hi - len);
+    drag.p.e = drag.p.s + len;
+  } else {
+    setEdge(drag.p, drag.mode, t);
+  }
+  drawStrip(); drawWave(progress());
+});
+function endDrag(){
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  if (!d.moved) {
+    const a = $('audio');
+    if (a.duration) { fix.stopAt = null; a.currentTime = d.t0; drawWave(progress()); drawStrip(); }
+    return;
+  }
+  if (d.p) {
+    const [lo, hi] = room(d.p);
+    if (hi - lo < PART_MIN_S) {
+      fix.parts = fix.parts.filter(q => q !== d.p);
+      fix.active = fix.parts[fix.parts.length - 1] || null;
+      partState(`There isn’t room for a ${PART_MIN_S}-second part there.`);
+    } else {
+      tidy(d.p);
+    }
+  }
+  renderParts();
+}
+$('strip').addEventListener('pointerup', endDrag);
+$('strip').addEventListener('pointercancel', endDrag);
+
+$('markStart').onclick = () => { if (sessionLength()) markStart($('audio').currentTime); };
+$('markEnd').onclick = () => { if (sessionLength()) markEnd($('audio').currentTime); };
+$('addPart').onclick = () => {
+  const last = fix.parts[fix.parts.length - 1];
+  if (!newPart($('audio').currentTime, 'start') && last) newPart(last.e, 'start');
+  renderParts();
+};
+$('partGo').onclick = submitFix;
+$('partBox').addEventListener('toggle', () => { if ($('partBox').open) requestAnimationFrame(drawStrip); });
+
+/* breathing guide: a dialog over the listen screen, Escape or the cross closes it */
+$('breatheOpen').onclick = openGuide;
+$('breatheClose').onclick = closeGuide;
+$('breathePlay').onclick = () => $('play').click();
+$('breathe').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); closeGuide(); return; }
+  if (e.key !== 'Tab') return;
+  const items = [...$('breathe').querySelectorAll('button')].filter(b => b.offsetParent !== null);
+  const first = items[0], last = items[items.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !$('breathe').hidden) { wakeLock = null; lockScreen(); }
+});
+
 window.addEventListener('resize', () => {
-  if ($('sDone').classList.contains('on')) drawWave(progress());
+  if ($('sDone').classList.contains('on')) { drawWave(progress()); drawStrip(); }
 });
 
 renderChoices();

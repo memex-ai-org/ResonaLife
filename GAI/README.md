@@ -18,7 +18,7 @@ browser ──► web (CPU) ──── POST /generate ────► Generato
 |---|---|---|
 | `resonalife-gai` | App | the two functions below |
 | `web` | CPU function | the page (`static/`), the API, the login |
-| `Generator` | GPU class, L40S | keeps Stable Audio 3 loaded; renders one session at a time |
+| `Generator` | GPU class, L40S | keeps Stable Audio 3 loaded; renders one session or fix at a time |
 | `resonalife-models` | Volume | Hugging Face cache: Stable Audio 3 and Qwen weights (~25 GB) |
 | `resonalife-outputs` | Volume | one folder of WAV/MP3 files per session |
 | `resonalife-jobs` | Dict | job status, log and prompts; this is the "Your sessions" list |
@@ -112,8 +112,12 @@ the password is the one from step 3.
   so the next one starts right away.
 - **Downloads:** each finished session offers an MP3 preview, the 24-bit
   studio WAV (EQ'd and loudness-normalized) and the unprocessed render.
+- **Fix one part:** regenerate only the part of a finished session that went
+  wrong, as a new version of it (see [Fixing one part](#fixing-one-part)).
+- **Breathing guide:** a circle that grows as you breathe in and shrinks as
+  you breathe out, while the session plays (see [Breathing guide](#breathing-guide)).
 - **Closing the page is safe.** Rendering carries on without it, and the
-  session reopens from "Your sessions".
+  session reopens from "Your sessions". So does a fix that's still being made.
 
 ## Updating
 
@@ -390,6 +394,100 @@ loop would drop from its steady energy straight back to stillness. Sparser is
 left out of Gentle activation, where the pulse is meant to grow clearer. The end
 tempo defaults to 70 BPM, since the guideline gives a range but no default.
 
+## Fixing one part
+
+When one stretch of a finished session went wrong (a drum hit, a voice, a
+glitch), "Fix one part" regenerates just that stretch. It uses Stable Audio 3's
+inpainting. Stability's inference doc says inpainting "lets you regenerate a
+specific region of an existing audio file while keeping the rest intact, useful
+for fixing a section".
+
+**On the page.** Open "Fix one part" under the player. Then:
+
+1. Mark the part. Drag across the waveform strip, or press **Start here** and
+   **End here** while it plays. Drag a part's edges or middle to change it, or
+   type its times. Up to 4 parts at a time; the bowl shows them on its rim.
+2. Tick what went wrong. The list is the mode's own Troubleshooting problems,
+   plus "A click, crackle or glitch" and "Doesn't match the music around it".
+   ISO sessions have a short general list instead.
+3. Optionally, say what it should sound like in "Anything else?".
+4. Press **Regenerate this part**.
+
+When it's done, the fix plays from just before the new part. Every fix is a new
+version: the buttons under the player switch between **Original**, **Fix 1** and
+so on at the same moment, so you can compare them. Downloads follow the version
+playing. A new fix starts from the version you're listening to.
+
+**Part length.** A part can be 5 s to 5 min. Stable Audio 3 medium makes at most
+380 s per call (Stability's README), and this pipeline keeps calls to 360 s
+(`MAX_MODEL_DURATION_S`). Each part goes in with up to 30 s of the session on
+either side as context (`INPAINT_CTX_S`), so 360 − 2 × 30 = 300 s. Parts close
+enough to share one 360 s window go in as one call, using the list form from
+Stability's doc ("To inpaint **multiple non-contiguous regions** in one pass,
+pass lists for both time parameters"). Parts further apart get a call each.
+
+Mark a little more than you heard. Stability's prompting guide: "The audio
+context matters more than the prompt. Masking only a few seconds of a song may
+produce output very close to the original since the model has too much context
+to deviate."
+
+**What the model gets** (`pipeline.inpaint_session`):
+
+- The audio: the version's raw render, `completed.wav` (or `completed_vN.wav`),
+  before EQ and ending. The window is the part(s) plus the context, with the mask
+  over the part(s).
+- The prompt: the one the part's phase was rendered from. The ticked problems
+  go first in its Addition Request, in positive wording: the module's fix
+  phrases (`PAIN_FIXES`, `DEMENTIA_FIXES`, `DEPRESSION_FIXES`), `PART_FIXES_SHARED`,
+  or `ISO_PART_FIXES`. Percussion fixes only name percussion in a phase where it
+  plays. The listener's words follow, with tempo numbers removed. Any clause
+  that names an avoided sound or asks for something to go ("no drums") is left
+  out, because a sound named in the prompt tends to appear. The page shows what
+  was left out. A part that doesn't reach the end of the session also drops the
+  ending's fade or close from its prompt, so it can't fade out mid-session.
+- A new random seed each time, logged, so trying again gives a different take.
+
+**Splicing.** The new audio replaces only the part, with a 1.5 s crossfade
+(`INPAINT_XFADE_S`) inside the music kept on either side. Everything else in
+the new raw render is bit-identical to the version it came from. Then the whole
+session goes through the same EQ, loudness normalization and ending as before:
+the fade or loop is applied again, and `loop_check` is remade for loop endings.
+
+**Files.** Versions sit side by side in the session folder and are never
+overwritten:
+
+| Version | Raw render | Studio WAV | Preview | Loop check |
+|---|---|---|---|---|
+| 1 (original) | `completed.wav` | `completed_EQed.wav` | `preview.mp3` | `loop_check.mp3` |
+| 2 | `completed_v2.wav` | `completed_EQed_v2.wav` | `preview_v2.mp3` | `loop_check_v2.mp3` |
+
+A fix made from an older version takes the next free number, so it never
+replaces a newer one. The segment files (`immediate_calm.wav` and so on) always
+belong to version 1.
+
+## Breathing guide
+
+"Breathing guide" under the player opens a calm full-screen view while the
+session plays. The circle grows as you breathe in and shrinks as you breathe
+out, and the words "Breathe in" and "Breathe out" change with it. Around it, the
+session's arc fills as it plays, in its phase colours.
+
+| Pace | Breaths a minute | Note |
+|---|---|---|
+| 4 in, 6 out | 6 | Default. The pain relief prompts phrase the music in the same 10 s cycle (bpm / 6 beats a phrase) |
+| 3 in, 4 out | about 9 | Easier, for someone who finds slow breathing hard |
+| 5 in, 7 out | 5 | Slower |
+
+- The page remembers the pace. The screen stays on while the guide is open,
+  where the browser supports it.
+- With the system's reduced-motion setting, the circle brightens and dims
+  instead of moving.
+- The guide is opt-in, and its text says to breathe along only if it feels
+  comfortable, and otherwise to breathe normally and just listen.
+
+The "Breathe in / Breathe out" circle on the waiting screen now runs on the
+same clock, so its words and size can't drift apart.
+
 ## API
 
 Every route sits behind the same login, so scripts pass it with `-u`:
@@ -428,13 +526,22 @@ curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
   $URL/generate
 
 curl -u resonalife:$PASSWORD $URL/jobs/<job_id>
+
+# fix one part of a finished session (parts in seconds, as [start, end])
+curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
+  -d '{"job_id": "<the session job_id>", "parts": [[190, 220]], "fixes": ["percussion"],
+       "note": "softer, just the pads and slow piano"}' \
+  $URL/inpaint
+# -> {"job_id": "…", "position": 1}: poll /jobs/<that id>; when it's done the
+#    session's own job lists the new version and plays it
 ```
 
 | Route | Returns |
 |---|---|
 | `POST /generate` | `job_id` and queue position. Body: `request`, optional `seed`, `mode` (`iso`, `pain_relief`, `dementia` or `depression`), `options` |
-| `GET /jobs/{id}` | `status` (queued, running, done or error), `progress`, `plan`, `log`, and once done a `result` |
-| `GET /jobs` | The latest 50 jobs, summary only |
+| `POST /inpaint` | A fix job's `job_id` and queue position. Body: `job_id` (the session), `parts`, optional `version` (default the newest), `fixes`, `note`, `seed`. 409 while another fix of the same session is pending |
+| `GET /jobs/{id}` | `status` (queued, running, done or error), `progress`, `plan`, `log`, and once done a `result`. A session's job also has `versions`, oldest first, and `pending_fix` |
+| `GET /jobs` | The latest 50 sessions, summary only, with their number of `versions`. Fix jobs aren't listed |
 | `GET /audio/{folder}/{file}` | A session file |
 | `GET /health` | Queue and busy state |
 
@@ -443,6 +550,12 @@ When a job is done, its `result` holds:
 - `audio_url` (MP3 preview), `download_url` (studio WAV) and `raw_url` (unprocessed render)
 - `loop_check_url` (loop endings only)
 - `prompts`, `segments` and, for the guideline modules, the `settings` actually used
+- `folder`, `version` and `limits` (what a fix may regenerate, from `config.INPAINT_*`)
+- for a fixed version, also `base_version`, `parts` (with the phase whose prompt each
+  used), `fixes`, `note`, `left_out` (the listener's clauses left out of the prompt) and `seed`
+
+The fix problem ids are the modules' `fixes` above, plus `glitch` and `jarring`
+in every mode. ISO sessions use `percussion`, `voices`, `harsh`, `loud`, `busy` and `dark`.
 
 ## Training a LoRA
 
@@ -553,6 +666,10 @@ These live in `config.py`; deploy after changing them.
 - **Guideline modules:** `PAIN_*`, `DEMENTIA_*` and `DEPRESSION_*` hold the arc
   shares, the safe ranges and the defaults. `FADE_SHARE`, `CLOSE_FADE_S`,
   `LOOP_CROSSFADE_S` and `LOOP_CHECK_S` set the endings for all three.
+- **Fixing one part:** `INPAINT_CTX_S` (context either side, 30 s), `INPAINT_MAX_S`
+  (the longest part, derived from it and `MAX_MODEL_DURATION_S`), `INPAINT_MIN_S`
+  (5 s), `INPAINT_MAX_PARTS` (4) and `INPAINT_XFADE_S` (1.5 s). The page reads the
+  limits from each result, so changing them here is enough.
 
 ## Troubleshooting
 
@@ -578,6 +695,19 @@ These live in `config.py`; deploy after changing them.
   but less tailored to the request. `python -m modal app logs resonalife-gai`
   prints every rejected reply in full; if it keeps happening in one mode, that
   mode's prompt needs work.
+
+- **A fixed part sounds almost the same as before.** The music around it held
+  it close. Mark a longer part, or tick what went wrong so the prompt can pull
+  it further.
+- **The fix note says something was "left out of the prompt".** That clause
+  named a sound to remove ("no drums"), which tends to bring the sound in. Say
+  what it should sound like instead, or tick the matching problem.
+- **"A part of this session is already being regenerated."** Fixes of one
+  session run one at a time. Wait for the first, then fix the next part from the
+  version you want.
+- **A fix fails with "The part at … is … long".** A part is 5 s to 5 min
+  (`INPAINT_MIN_S`, `INPAINT_MAX_S`). The page keeps parts inside these limits,
+  so this only comes from the API.
 
 ## Running locally (optional)
 

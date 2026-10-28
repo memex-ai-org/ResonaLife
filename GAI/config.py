@@ -156,6 +156,17 @@ CLOSE_FADE_S = 8.0        # dementia soft close: a short tail after the resolved
 LOOP_CROSSFADE_S = 8.0    # loop: tail folded into the start so the file repeats with no click or gap
 LOOP_CHECK_S = 10.0       # loop: seconds either side of the join in loop_check.mp3
 
+# ---------- fixing one part (inpainting) ----------
+# A finished session can have parts regenerated: Stable Audio 3 gets the music
+# around each part as context and rewrites only the part (its inpainting mask).
+# One call holds a part plus INPAINT_CTX_S of music on each side, and a call is
+# at most MAX_MODEL_DURATION_S, so the longest part is 360 - 2 x 30 = 300 s.
+INPAINT_CTX_S = CTX_S                                       # music kept on each side of a part, as context
+INPAINT_MAX_S = MAX_MODEL_DURATION_S - 2 * INPAINT_CTX_S    # the longest part: 5 min
+INPAINT_MIN_S = 5.0          # shorter parts come back almost unchanged: the context outweighs the prompt
+INPAINT_MAX_PARTS = 4        # parts per request; parts close together share one call
+INPAINT_XFADE_S = 1.5        # crossfade into and out of each part, inside the music kept around it
+
 # ---------- post EQ ----------
 POST_EQ = dict(
     hpf_hz=25, body_lo=90, body_hi=130, body_db=0.0,

@@ -6,7 +6,8 @@ Two containers behind one URL:
 
 pipeline.py, config.py and static/index.html are used unchanged. Every session
 mode (ISO, and the guideline's pain relief, dementia and depression modules) goes
-through the same POST /generate — see server.py for the request body.
+through the same POST /generate, and POST /inpaint regenerates parts of a finished
+session as a new version of it — see server.py for the request bodies.
 
 Run from the GAI folder (next to pipeline.py, config.py, static/, stable-audio-3-main/):
   python -m modal run modal_app.py       one-time: build image + download weights
@@ -44,19 +45,32 @@ def result_for_page(result):
     """The pipeline's result with file paths turned into URLs the page can fetch."""
     folder = Path(result['eq_path']).parent.name
     loop_check = result.get('loop_check_path')
-    return {
+    page = {
         'mode': result['mode'],
         'ending': result.get('ending'),
         'settings': result.get('settings'),
+        'folder': folder,
+        'version': result.get('version', 1),
         'duration_s': result['duration_s'],
         'prompts': result['prompts'],
         'segments': result['segments'],
         'peaks': result['peaks'],
         'audio_url': f'/audio/{folder}/{Path(result["preview_path"]).name}',
-        'download_url': f'/audio/{folder}/completed_EQed.wav',
-        'raw_url': f'/audio/{folder}/completed.wav',
+        'download_url': f'/audio/{folder}/{Path(result["eq_path"]).name}',
+        'raw_url': f'/audio/{folder}/{Path(result["raw_path"]).name}',
         'loop_check_url': f'/audio/{folder}/{Path(loop_check).name}' if loop_check else None,
     }
+    # a fixed version: which version it was made from, and what was regenerated how;
+    # and for every version, what a fix of it may regenerate (config.INPAINT_*)
+    for key in ('base_version', 'parts', 'fixes', 'note', 'left_out', 'seed', 'limits'):
+        if key in result:
+            page[key] = result[key]
+    return page
+
+
+def versions_of(job):
+    """Every version of a session's job, oldest first (jobs from before versions have one)."""
+    return job.get('versions') or ([job['result']] if job.get('result') else [])
 
 
 # ============================================================
@@ -162,11 +176,67 @@ class Generator:
             outputs_vol.commit()     # make the files visible to the web container
             models_vol.commit()
             job['result'] = result_for_page(result)
+            job['versions'] = [job['result']]
             job['status'] = 'done'
         except Exception as e:
             import traceback
             job['status'] = 'error'
             job['error'] = f'{type(e).__name__}: {e}'
+            job['log'].append(job['error'])
+            print(traceback.format_exc(), flush=True)
+        finally:
+            job['finished_at'] = now()
+            jobs[job_id] = job
+
+    @modal.method()
+    def inpaint(self, job_id):
+        """Regenerate parts of a finished session (POST /inpaint) as its newest version."""
+        import pipeline
+
+        job = jobs[job_id]
+        job['status'] = 'running'
+        job['started_at'] = now()
+        job['log'] = []
+        job['progress'] = None
+        jobs[job_id] = job
+
+        def log(line):
+            print(f'[{job_id[:8]}] {line}', flush=True)
+            job['log'].append(line)
+            jobs[job_id] = job
+
+        def on_segment(i, total, name):
+            job['progress'] = {'segment': i + 1, 'total': total, 'name': name}
+            jobs[job_id] = job
+
+        try:
+            try:
+                outputs_vol.reload()     # the session may have been rendered by an earlier container
+            except Exception:
+                pass
+            parent = jobs[job['parent']]
+            base = next(v for v in versions_of(parent) if v.get('version', 1) == job['base_version'])
+            result = pipeline.inpaint_session(
+                base, job['parts'], fixes=job.get('fixes'), note=job.get('note', ''), seed=job.get('seed'),
+                log=log, on_segment=on_segment,
+            )
+            outputs_vol.commit()
+            job['result'] = result_for_page(result)
+            # the session's job first, while this one still shows running: the page only
+            # asks for another fix once it sees this one done
+            parent = jobs[job['parent']]
+            parent['versions'] = versions_of(parent) + [job['result']]
+            parent['result'] = job['result']
+            parent['pending_fix'] = None
+            jobs[job['parent']] = parent
+            job['status'] = 'done'
+        except Exception as e:
+            import traceback
+            job['status'] = 'error'
+            if isinstance(e, ValueError):    # the pipeline words these for the page
+                job['error'] = f'{str(e)[:1].upper()}{str(e)[1:]}.'
+            else:
+                job['error'] = f'{type(e).__name__}: {e}'
             job['log'].append(job['error'])
             print(traceback.format_exc(), flush=True)
         finally:
@@ -206,6 +276,14 @@ def web():
         seed: int | None = None
         mode: Literal['iso', 'pain_relief', 'dementia', 'depression'] = 'iso'
         options: dict | None = None    # a guideline module's settings; validated by the pipeline
+
+    class InpaintRequest(BaseModel):
+        job_id: str                    # the session to fix
+        parts: list                    # [[start_s, end_s], ...]; checked by pipeline.clean_parts
+        version: int | None = None     # the version to start from; the newest by default
+        fixes: list[str] = []          # the problems ticked on the page
+        note: str = ''                 # the listener's own words for the part
+        seed: int | None = None
 
     def check_call(job):
         """If the GPU call died without updating the job (model load failed,
@@ -260,6 +338,51 @@ def web():
         position = sum(1 for j in jobs.values() if j['status'] in ('queued', 'running'))
         return {'job_id': job_id, 'position': position}
 
+    @api.post('/inpaint')
+    def inpaint(req: InpaintRequest):
+        if not req.parts:
+            raise HTTPException(400, 'Choose a part of the session to regenerate.')
+        parent = jobs.get(req.job_id)
+        if not parent or parent.get('kind') == 'inpaint':
+            raise HTTPException(404, 'no such session')
+        if parent['status'] != 'done' or not parent.get('result'):
+            raise HTTPException(409, 'This session is not finished yet.')
+        versions = versions_of(parent)
+        base = versions[-1] if req.version is None else \
+            next((v for v in versions if v.get('version', 1) == req.version), None)
+        if base is None:
+            raise HTTPException(404, f'This session has no version {req.version}.')
+        pending = jobs.get(parent.get('pending_fix') or '')
+        if pending and check_call(pending)['status'] in ('queued', 'running'):
+            raise HTTPException(409, 'A part of this session is already being regenerated.')
+        job_id = str(uuid.uuid4())
+        jobs[job_id] = {
+            'id': job_id,
+            'kind': 'inpaint',
+            'parent': req.job_id,
+            'base_version': base.get('version', 1),
+            'request': parent['request'],
+            'mode': parent.get('mode', 'iso'),
+            'options': None,
+            'seed': req.seed,
+            'parts': req.parts,
+            'fixes': [f for f in req.fixes if isinstance(f, str)],
+            'note': req.note.strip()[:600],
+            'status': 'queued',
+            'log': [],
+            'progress': None,
+            'plan': None,
+            'result': None,
+            'error': None,
+            'created_at': now(),
+        }
+        parent['pending_fix'] = job_id
+        jobs[req.job_id] = parent
+        call = Generator().inpaint.spawn(job_id)
+        calls[job_id] = call.object_id
+        position = sum(1 for j in jobs.values() if j['status'] in ('queued', 'running'))
+        return {'job_id': job_id, 'position': position}
+
     @api.get('/jobs/{job_id}')
     def get_job(job_id: str):
         job = jobs.get(job_id)
@@ -269,7 +392,9 @@ def web():
 
     @api.get('/jobs')
     def list_jobs():
-        snapshot = sorted(jobs.values(), key=lambda j: j['created_at'], reverse=True)
+        # fixes are versions of their session, not sessions of their own
+        snapshot = sorted((j for j in jobs.values() if j.get('kind') != 'inpaint'),
+                          key=lambda j: j['created_at'], reverse=True)
         return [
             {
                 'id': j['id'],
@@ -278,6 +403,7 @@ def web():
                 'status': j['status'],
                 'created_at': j['created_at'],
                 'result': {'duration_s': j['result']['duration_s']} if j['result'] else None,
+                'versions': len(versions_of(j)),
             }
             for j in snapshot[:50]
         ]

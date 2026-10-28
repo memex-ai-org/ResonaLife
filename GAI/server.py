@@ -20,6 +20,12 @@ POST /generate {"request": "...", "mode": "depression", "options": {...}}
     brightness warm|brighter, percussion off|light, sparser bool, profile {...}, fixes [...]
 (see pipeline.pain_relief_settings, dementia_settings and depression_settings;
 anything missing takes the guideline default)
+
+POST /inpaint {"job_id": "...", "parts": [[start_s, end_s], ...], "fixes": [...], "note": "..."}
+    regenerates parts of a finished session (see pipeline.inpaint_session) as a new
+    job; when it's done the session's job gets the result as its newest version.
+    Optional "version": which of the session's versions to start from (default the
+    latest). The session's job lists every version under "versions".
 """
 import queue
 import threading
@@ -63,14 +69,25 @@ class GenerateRequest(BaseModel):
     options: dict | None = None    # a guideline module's settings; validated by the pipeline
 
 
+class InpaintRequest(BaseModel):
+    job_id: str                    # the session to fix
+    parts: list                    # [[start_s, end_s], ...]; checked by pipeline.clean_parts
+    version: int | None = None     # the version to start from; the newest by default
+    fixes: list[str] = []          # the problems ticked on the page
+    note: str = ''                 # the listener's own words for the part
+    seed: int | None = None
+
+
 def result_for_page(result):
     """The pipeline's result with file paths turned into URLs the page can fetch."""
     folder = Path(result['eq_path']).parent.name
     loop_check = result.get('loop_check_path')
-    return {
+    page = {
         'mode': result['mode'],
         'ending': result.get('ending'),
         'settings': result.get('settings'),
+        'folder': folder,
+        'version': result.get('version', 1),
         'duration_s': result['duration_s'],
         'prompts': result['prompts'],
         'segments': result['segments'],
@@ -78,11 +95,22 @@ def result_for_page(result):
         # small file for the browser to stream
         'audio_url': f'/audio/{folder}/{Path(result["preview_path"]).name}',
         # full-quality 24-bit deliverable
-        'download_url': f'/audio/{folder}/completed_EQed.wav',
-        'raw_url': f'/audio/{folder}/completed.wav',
+        'download_url': f'/audio/{folder}/{Path(result["eq_path"]).name}',
+        'raw_url': f'/audio/{folder}/{Path(result["raw_path"]).name}',
         # loop endings: the last and first seconds back to back
         'loop_check_url': f'/audio/{folder}/{Path(loop_check).name}' if loop_check else None,
     }
+    # a fixed version: which version it was made from, and what was regenerated how;
+    # and for every version, what a fix of it may regenerate (config.INPAINT_*)
+    for key in ('base_version', 'parts', 'fixes', 'note', 'left_out', 'seed', 'limits'):
+        if key in result:
+            page[key] = result[key]
+    return page
+
+
+def versions_of(job):
+    """Every version of a session's job, oldest first (jobs from before versions have one)."""
+    return job.get('versions') or ([job['result']] if job.get('result') else [])
 
 
 def worker():
@@ -120,19 +148,41 @@ def worker():
             _job['plan'] = names          # every segment name, so the page can colour the arc
 
         try:
-            result = pipeline.generate_session(
-                job['request'], seed=job['seed'], log=log, on_segment=on_segment,
-                mode=job['mode'], options=job['options'], on_plan=on_plan,
-            )
-            job['result'] = result_for_page(result)
+            if job.get('kind') == 'inpaint':
+                with JOBS_LOCK:
+                    parent = JOBS[job['parent']]
+                    base = next(v for v in versions_of(parent) if v.get('version', 1) == job['base_version'])
+                result = pipeline.inpaint_session(
+                    base, job['parts'], fixes=job['fixes'], note=job['note'], seed=job['seed'],
+                    log=log, on_segment=on_segment,
+                )
+                job['result'] = result_for_page(result)
+                with JOBS_LOCK:      # the session's job gets the new version, and plays it from now on
+                    parent['versions'] = versions_of(parent) + [job['result']]
+                    parent['result'] = job['result']
+            else:
+                result = pipeline.generate_session(
+                    job['request'], seed=job['seed'], log=log, on_segment=on_segment,
+                    mode=job['mode'], options=job['options'], on_plan=on_plan,
+                )
+                job['result'] = result_for_page(result)
+                job['versions'] = [job['result']]
             job['status'] = 'done'
         except Exception as e:
             job['status'] = 'error'
-            job['error'] = f'{type(e).__name__}: {e}'
+            if isinstance(e, ValueError) and job.get('kind') == 'inpaint':
+                job['error'] = f'{str(e)[:1].upper()}{str(e)[1:]}.'   # the pipeline words these for the page
+            else:
+                job['error'] = f'{type(e).__name__}: {e}'
             log(job['error'])
             print(traceback.format_exc())
         finally:
             job['finished_at'] = datetime.now().isoformat(timespec='seconds')
+            if job.get('kind') == 'inpaint':
+                with JOBS_LOCK:
+                    parent = JOBS.get(job['parent'])
+                    if parent and parent.get('pending_fix') == job['id']:
+                        parent['pending_fix'] = None
             JOB_QUEUE.task_done()
 
 
@@ -180,6 +230,54 @@ def generate(req: GenerateRequest):
     return {'job_id': job_id, 'position': JOB_QUEUE.qsize()}
 
 
+@app.post('/inpaint')
+def inpaint(req: InpaintRequest):
+    if MODEL_ERROR:
+        raise HTTPException(503, 'The models failed to load, so nothing can be regenerated.')
+    if not req.parts:
+        raise HTTPException(400, 'Choose a part of the session to regenerate.')
+    if len(req.parts) > config.INPAINT_MAX_PARTS:
+        raise HTTPException(400, f'Choose at most {config.INPAINT_MAX_PARTS} parts at a time.')
+    with JOBS_LOCK:
+        parent = JOBS.get(req.job_id)
+        if not parent or parent.get('kind') == 'inpaint':
+            raise HTTPException(404, 'no such session')
+        if parent['status'] != 'done' or not parent.get('result'):
+            raise HTTPException(409, 'This session is not finished yet.')
+        versions = versions_of(parent)
+        base = versions[-1] if req.version is None else \
+            next((v for v in versions if v.get('version', 1) == req.version), None)
+        if base is None:
+            raise HTTPException(404, f'This session has no version {req.version}.')
+        pending = JOBS.get(parent.get('pending_fix') or '')
+        if pending and pending['status'] in ('queued', 'running'):
+            raise HTTPException(409, 'A part of this session is already being regenerated.')
+        job_id = str(uuid.uuid4())
+        JOBS[job_id] = {
+            'id': job_id,
+            'kind': 'inpaint',
+            'parent': req.job_id,
+            'base_version': base.get('version', 1),
+            'request': parent['request'],
+            'mode': parent.get('mode', 'iso'),
+            'options': None,
+            'seed': req.seed,
+            'parts': req.parts,
+            'fixes': [f for f in req.fixes if isinstance(f, str)],
+            'note': req.note.strip()[:600],
+            'status': 'queued',
+            'log': [],
+            'progress': None,
+            'plan': None,
+            'result': None,
+            'error': None,
+            'created_at': datetime.now().isoformat(timespec='seconds'),
+        }
+        parent['pending_fix'] = job_id
+    JOB_QUEUE.put(job_id)
+    return {'job_id': job_id, 'position': JOB_QUEUE.qsize()}
+
+
 @app.get('/jobs/{job_id}')
 def get_job(job_id: str):
     with JOBS_LOCK:
@@ -191,9 +289,10 @@ def get_job(job_id: str):
 
 @app.get('/jobs')
 def list_jobs():
-    """Summaries only — the full job carries a 900-point waveform we don't need here."""
+    """Summaries only — the full job carries a 900-point waveform we don't need here.
+    Fixes are versions of their session, not sessions of their own, so they aren't listed."""
     with JOBS_LOCK:
-        snapshot = list(JOBS.values())
+        snapshot = [j for j in JOBS.values() if j.get('kind') != 'inpaint']
     snapshot.sort(key=lambda j: j['created_at'], reverse=True)
     return [
         {
@@ -203,6 +302,7 @@ def list_jobs():
             'status': j['status'],
             'created_at': j['created_at'],
             'result': {'duration_s': j['result']['duration_s']} if j['result'] else None,
+            'versions': len(versions_of(j)),
         }
         for j in snapshot[:50]
     ]

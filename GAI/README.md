@@ -20,8 +20,8 @@ browser ──► web (CPU) ──── POST /generate ────► Generato
 | `web` | CPU function | the page (`static/`), the API, the login |
 | `Generator` | GPU class, L40S | keeps Stable Audio 3 loaded; renders one session or fix at a time |
 | `resonalife-models` | Volume | Hugging Face cache: Stable Audio 3 and Qwen weights (~25 GB) |
-| `resonalife-outputs` | Volume | one folder of WAV/MP3 files per session |
-| `resonalife-jobs` | Dict | job status, log and prompts; this is the "Your sessions" list |
+| `resonalife-outputs` | Volume | one folder of WAV/MP3 files per session, and the Posts tab's posts (`_posts/`, one JSON file each) |
+| `resonalife-jobs` | Dict | job status, log and prompts; this is the "Your sessions" list. Modal expires a Dict entry after 7 days without a read or write |
 | `resonalife-calls` | Dict | job to GPU call id, so a crashed GPU call shows up as an error |
 | `resonalife-secrets` | Secret | `HF_TOKEN`, `RESONALIFE_PASSWORD` |
 | `resonalife-train` | App | LoRA training (`train_lora_modal.py`), separate from the site |
@@ -37,6 +37,7 @@ GAI/
 ├── train_lora_modal.py   LoRA training, a separate Modal app (see Training a LoRA)
 ├── pipeline.py           orchestration, generation, post-processing
 ├── config.py             model ids, generation and EQ settings, the guideline modules' arcs
+├── posts.py              the Posts tab's storage, used by both servers
 ├── static/index.html     the page
 ├── data/                 training audio and captions, used only by training
 ├── stable-audio-3-main/  Stability's stable-audio-3 repo, copied into the GPU image
@@ -99,7 +100,7 @@ the password is the one from step 3.
 | Mode | What it makes |
 |---|---|
 | Choose settings | Guided ISO session: pick a goal, a length and sounds |
-| Write your own | ISO session from free text. The length is the first "N min" in the text; default 15, max 120 |
+| Write your own | ISO session from free text, typed or spoken. The length is the first "N min" in the text; default 15, max 120 |
 | Pain relief | The hospice guideline's Module 1: a six-phase comfort arc (see [Pain relief mode](#pain-relief-mode)) |
 | Dementia | Module 2: familiar, simple and safe music, with a Calming mode (see [Dementia mode](#dementia-mode)) |
 | Depression | Module 3: meets the mood first, then comforts or gently lifts (see [Depression mode](#depression-mode)) |
@@ -110,18 +111,28 @@ the password is the one from step 3.
   while others are queued.
 - **Warm window:** after a session finishes, the GPU stays warm for 5 minutes,
   so the next one starts right away.
+- **Speak instead of typing:** in Write your own, tap the microphone and say
+  how you feel and what you'd like. Your words appear in the box as you speak;
+  tap again to stop, check the text (and the length it picked up), then send.
+  It uses the browser's own speech recognition, in English: Chrome, Edge and
+  Safari have it, Firefox doesn't, so the microphone doesn't show there. The
+  browser's speech service (Google's in Chrome, Apple's in Safari) hears the
+  audio; only the text reaches our server. The browser asks for microphone
+  access the first time.
 - **Downloads:** each finished session offers an MP3 preview, the 24-bit
   studio WAV (EQ'd and loudness-normalized) and the unprocessed render.
 - **Fix one part:** regenerate only the part of a finished session that went
   wrong, as a new version of it (see [Fixing one part](#fixing-one-part)).
 - **Breathing guide:** a circle that grows as you breathe in and shrinks as
-  you breathe out, while the session plays (see [Breathing guide](#breathing-guide)).
+  you breathe out, in time with the session's tempo (see [Breathing guide](#breathing-guide)).
+- **Posts:** "Post this" saves a finished session to the Posts tab, where
+  everyone who signs in can play it (see [Posts](#posts)).
 - **Closing the page is safe.** Rendering carries on without it, and the
   session reopens from "Your sessions". So does a fix that's still being made.
 
 ## Updating
 
-After changing `pipeline.py`, `config.py`, `static/` or `modal_app.py`:
+After changing `pipeline.py`, `config.py`, `posts.py`, `static/` or `modal_app.py`:
 
 ```bash
 python -m modal deploy modal_app.py
@@ -143,7 +154,8 @@ someone's first session.
 | List saved sessions | `python -m modal volume ls resonalife-outputs` |
 | Download one session's files | `python -m modal volume get resonalife-outputs <session-folder> .` |
 | Change the password | `python -m modal secret create resonalife-secrets HF_TOKEN=hf_xxx RESONALIFE_PASSWORD=new-password --force`, then deploy again |
-| Empty the "Your sessions" list | `python -m modal dict clear resonalife-jobs` (the audio files stay in the volume) |
+| Empty the "Your sessions" list | `python -m modal dict clear resonalife-jobs` (the audio files and posts stay in the volume) |
+| List the posts | `python -m modal volume ls resonalife-outputs _posts` |
 | Take the site offline | `python -m modal app stop resonalife-gai`; deploy again to bring it back |
 
 `--force` replaces the whole secret, so always pass both keys. Session folders
@@ -472,21 +484,57 @@ session plays. The circle grows as you breathe in and shrinks as you breathe
 out, and the words "Breathe in" and "Breathe out" change with it. Around it, the
 session's arc fills as it plays, in its phase colours.
 
-| Pace | Breaths a minute | Note |
-|---|---|---|
-| 4 in, 6 out | 6 | Default. The pain relief prompts phrase the music in the same 10 s cycle (bpm / 6 beats a phrase) |
-| 3 in, 4 out | about 9 | Easier, for someone who finds slow breathing hard |
-| 5 in, 7 out | 5 | Slower |
+**The pace comes from the music.** Each breath is 4 beats in and 6 beats out at
+the tempo of the phase playing: the guideline's slow breath, 4 in and 6 out at
+60 BPM. So faster music breathes a little faster:
 
-- The page remembers the pace. The screen stays on while the guide is open,
-  where the browser supports it.
-- With the system's reduced-motion setting, the circle brightens and dims
+| Tempo | One breath | Breaths a minute |
+|---|---|---|
+| 45 BPM | 13.3 s | about 4.5 |
+| 58 BPM (pain relief default) | 10.3 s | about 6 |
+| 65 BPM (dementia default) | 9.2 s | about 6.5 |
+| 80 BPM | 7.5 s | 8 |
+
+- The breath is locked to the track's position, not a clock: it waits while the
+  music is paused and follows it when you skip. Where the tempo changes (Gentle
+  activation rises phase by phase; ISO sessions slow from match to settle), the
+  breath speeds up or slows down without a jump.
+- The tempo comes from the session: the setting in the guideline modules, or the
+  BPM each ISO prompt states. Every result now lists it per phase (`tempo`);
+  older sessions get it from their settings or prompts. A part with no steady
+  beat (an ISO settle with "no discernible tempo") breathes 4 seconds in and 6 out.
+- Below 40 or above 100 BPM a breath takes 5 or 20 beats instead of 10, so it
+  stays between 6 and 15 seconds.
+- A line under the player says the pace for the part playing, for example "In for
+  4 beats and out for 6, at 58 BPM: about 6 breaths a minute."
+- The screen stays on while the guide is open, where the browser supports it.
+  With the system's reduced-motion setting, the circle brightens and dims
   instead of moving.
 - The guide is opt-in, and its text says to breathe along only if it feels
   comfortable, and otherwise to breathe normally and just listen.
 
-The "Breathe in / Breathe out" circle on the waiting screen now runs on the
-same clock, so its words and size can't drift apart.
+The circle on the waiting screen has no track to follow, so it breathes 4
+seconds in and 6 out.
+
+## Posts
+
+"Post this" on a finished session saves it to the Posts tab (top right, next to
+Create). Everyone who signs in sees the same posts, since the site has one shared
+login. A post opens on the same player, with the breathing guide and downloads.
+
+- **What a post holds:** a title, an optional description and name, and one
+  version of the session (the one playing when you post). It doesn't hold the
+  request text, which can carry the notes typed with it, or the listener profile.
+  The posting form says so.
+- **One post per version.** A fixed version can be posted as well as the original.
+- **Posts don't expire.** Each one is a JSON file in `_posts/` on the
+  `resonalife-outputs` volume, next to the session folders, written and committed
+  as soon as you post (`posts.py`). The "Your sessions" list lives in the jobs
+  Dict, which Modal expires after 7 days without use. A post keeps playing after
+  its session has dropped off that list, because its audio stays on the volume.
+- **On a post:** "Open the session" goes back to the session while the server
+  still has it (to fix a part, say), and "Delete post" removes the post for
+  everyone after asking. Deleting a post never deletes the session or its audio.
 
 ## API
 
@@ -534,6 +582,12 @@ curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
   $URL/inpaint
 # -> {"job_id": "…", "position": 1}: poll /jobs/<that id>; when it's done the
 #    session's own job lists the new version and plays it
+
+# post a version of a finished session to the Posts tab
+curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
+  -d '{"job_id": "<the session job_id>", "version": 2, "title": "Rain to unwind",
+       "description": "Soft rain and warm pads", "author": "Willie"}' \
+  $URL/posts
 ```
 
 | Route | Returns |
@@ -542,6 +596,10 @@ curl -u resonalife:$PASSWORD -H 'Content-Type: application/json' \
 | `POST /inpaint` | A fix job's `job_id` and queue position. Body: `job_id` (the session), `parts`, optional `version` (default the newest), `fixes`, `note`, `seed`. 409 while another fix of the same session is pending |
 | `GET /jobs/{id}` | `status` (queued, running, done or error), `progress`, `plan`, `log`, and once done a `result`. A session's job also has `versions`, oldest first, and `pending_fix` |
 | `GET /jobs` | The latest 50 sessions, summary only, with their number of `versions`. Fix jobs aren't listed |
+| `POST /posts` | Posts one version of a finished session. Body: `job_id`, optional `version` (default the newest), `title`, optional `description` and `author`. 409 if that version is already posted |
+| `GET /posts` | Every post, newest first, as card summaries (with a 180-point waveform) |
+| `GET /posts/{id}` | One post, with everything the player needs |
+| `DELETE /posts/{id}` | Deletes the post (not the session or its audio) |
 | `GET /audio/{folder}/{file}` | A session file |
 | `GET /health` | Queue and busy state |
 
@@ -550,7 +608,8 @@ When a job is done, its `result` holds:
 - `audio_url` (MP3 preview), `download_url` (studio WAV) and `raw_url` (unprocessed render)
 - `loop_check_url` (loop endings only)
 - `prompts`, `segments` and, for the guideline modules, the `settings` actually used
-- `folder`, `version` and `limits` (what a fix may regenerate, from `config.INPAINT_*`)
+- `folder`, `version`, `limits` (what a fix may regenerate, from `config.INPAINT_*`)
+  and `tempo` (each phase's BPM, `null` where a prompt states none)
 - for a fixed version, also `base_version`, `parts` (with the phase whose prompt each
   used), `fixes`, `note`, `left_out` (the listener's clauses left out of the prompt) and `seed`
 
@@ -708,6 +767,9 @@ These live in `config.py`; deploy after changing them.
 - **A fix fails with "The part at … is … long".** A part is 5 s to 5 min
   (`INPAINT_MIN_S`, `INPAINT_MAX_S`). The page keeps parts inside these limits,
   so this only comes from the API.
+
+- **A post plays nothing.** Its session folder was deleted from the volume. The
+  post can go: "Delete post".
 
 ## Running locally (optional)
 

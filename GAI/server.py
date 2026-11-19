@@ -26,6 +26,10 @@ POST /inpaint {"job_id": "...", "parts": [[start_s, end_s], ...], "fixes": [...]
     job; when it's done the session's job gets the result as its newest version.
     Optional "version": which of the session's versions to start from (default the
     latest). The session's job lists every version under "versions".
+
+POST /posts {"job_id": "...", "version": 2, "title": "...", "description": "", "author": ""}
+    puts one version of a finished session in the Posts tab (see posts.py);
+GET /posts lists them, newest first; GET /posts/{id} is one post; DELETE /posts/{id}.
 """
 import queue
 import threading
@@ -43,6 +47,7 @@ from pydantic import BaseModel
 
 import config
 import pipeline
+import posts
 
 app = FastAPI(title='ResonaLife Functional Music GAI')
 
@@ -78,6 +83,14 @@ class InpaintRequest(BaseModel):
     seed: int | None = None
 
 
+class PostRequest(BaseModel):
+    job_id: str                    # the session
+    version: int | None = None     # which of its versions; the newest by default
+    title: str
+    description: str = ''
+    author: str = ''               # a name to show, optional: everyone shares one login
+
+
 def result_for_page(result):
     """The pipeline's result with file paths turned into URLs the page can fetch."""
     folder = Path(result['eq_path']).parent.name
@@ -101,8 +114,9 @@ def result_for_page(result):
         'loop_check_url': f'/audio/{folder}/{Path(loop_check).name}' if loop_check else None,
     }
     # a fixed version: which version it was made from, and what was regenerated how;
-    # and for every version, what a fix of it may regenerate (config.INPAINT_*)
-    for key in ('base_version', 'parts', 'fixes', 'note', 'left_out', 'seed', 'limits'):
+    # and for every version, what a fix of it may regenerate (config.INPAINT_*) and each
+    # phase's BPM (for the breathing guide)
+    for key in ('base_version', 'parts', 'fixes', 'note', 'left_out', 'seed', 'limits', 'tempo'):
         if key in result:
             page[key] = result[key]
     return page
@@ -308,11 +322,53 @@ def list_jobs():
     ]
 
 
+@app.post('/posts')
+def create_post(req: PostRequest):
+    with JOBS_LOCK:
+        job = JOBS.get(req.job_id)
+        if not job or job.get('kind') == 'inpaint':
+            raise HTTPException(404, 'This session is no longer on the server.')
+        if job['status'] != 'done':
+            raise HTTPException(409, 'This session is not finished yet.')
+        try:
+            post = posts.make(job, req.version, req.title, req.description, req.author)
+        except LookupError as e:
+            raise HTTPException(404, str(e))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    if posts.find(config.WORK, post['session_id'], post['version']):
+        raise HTTPException(409, 'This version is already in Posts.')
+    posts.save(config.WORK, post)
+    return posts.summary(post)
+
+
+@app.get('/posts')
+def list_posts():
+    return [posts.summary(p) for p in posts.load_all(config.WORK)]
+
+
+@app.get('/posts/{post_id}')
+def get_post(post_id: str):
+    post = posts.load(config.WORK, post_id)
+    if not post:
+        raise HTTPException(404, 'This post has been deleted.')
+    return post
+
+
+@app.delete('/posts/{post_id}')
+def delete_post(post_id: str):
+    if not posts.delete(config.WORK, post_id):
+        raise HTTPException(404, 'This post has been deleted.')
+    return {'deleted': post_id}
+
+
 @app.get('/audio/{folder}/{filename}')
 def audio(folder: str, filename: str):
-    # resolve and confine to WORK — a folder name like ../.. must not escape
+    # resolve and confine to WORK — a folder name like ../.. must not escape — and
+    # serve audio only (the posts' JSON files sit in WORK too)
     path = (config.WORK / folder / filename).resolve()
-    if not str(path).startswith(str(config.WORK.resolve())) or not path.is_file():
+    if (not str(path).startswith(str(config.WORK.resolve())) or path.suffix not in ('.mp3', '.wav')
+            or not path.is_file()):
         raise HTTPException(404, 'not found')
     media = 'audio/mpeg' if path.suffix == '.mp3' else 'audio/wav'
     return FileResponse(path, media_type=media, filename=f'{folder}_{filename}')

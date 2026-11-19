@@ -82,6 +82,14 @@ header{
   padding:22px 24px 0;
 }
 .mark{font-family:var(--serif);font-size:22px;letter-spacing:.01em;border-radius:6px}
+/* Create | Posts */
+.nav{display:flex;gap:2px;padding:3px;margin-left:auto;background:var(--glaze);border-radius:100px}
+.navbtn{
+  padding:6px 14px;border-radius:100px;color:var(--stone);font-size:15px;font-weight:500;
+  transition:color .15s ease,background-color .15s ease;
+}
+.navbtn:hover{color:var(--porcelain)}
+.navbtn[aria-current="page"]{background:var(--glaze-2);color:var(--porcelain);box-shadow:inset 0 0 0 1.5px var(--line)}
 .status{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--stone)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--stone-2);flex:none}
 .dot.ready{background:var(--sage)}
@@ -218,6 +226,22 @@ textarea.notes:focus{border-color:var(--line)}
 }
 .send:hover:not(:disabled){filter:brightness(1.05)}
 .send:disabled{opacity:.35;cursor:not-allowed}
+.mic{
+  width:46px;height:46px;flex:none;border-radius:50%;
+  background:var(--glaze-2);color:var(--stone);
+  box-shadow:inset 0 0 0 1.5px var(--line);
+  display:grid;place-items:center;
+  transition:color .15s ease,background .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.mic:hover{color:var(--porcelain)}
+.mic .mstop,.mic[aria-pressed="true"] .micon{display:none}
+.mic[aria-pressed="true"] .mstop{display:block}
+.mic[aria-pressed="true"]{background:var(--ember);color:var(--night);box-shadow:none}
+@media (prefers-reduced-motion:no-preference){
+  .mic[aria-pressed="true"]{animation:listen 1.6s ease-in-out infinite}
+}
+@keyframes listen{0%,100%{box-shadow:0 0 0 0 rgba(237,164,122,.5)}60%{box-shadow:0 0 0 9px rgba(237,164,122,0)}}
 .hint{font-size:14px;color:var(--stone-2);margin:10px 4px 0;min-height:1.55em}
 .hint b{font-weight:500;color:var(--stone)}
 .hint.warn{color:var(--danger)}
@@ -410,6 +434,33 @@ textarea.notes:focus{border-color:var(--line)}
 .loglines div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--stone-2)}
 .rawlink{color:var(--stone);text-underline-offset:3px}
 
+/* ── posts ──────────────────────────────────────── */
+#sDone[data-view="post"] .session-only,#sDone[data-view="session"] .post-only{display:none !important}
+.byline{text-align:center;color:var(--stone-2);font-size:14px;margin:-18px auto 22px}
+.postgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.post{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  padding:12px 16px 12px 12px;border-radius:16px;background:var(--glaze);border:1.5px solid transparent;
+  transition:background-color .15s ease,border-color .15s ease;
+}
+.post:hover{background:var(--glaze-2);border-color:var(--line)}
+.post canvas{width:88px;height:88px;flex:none}
+.ptext{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ptitle{font-family:var(--serif);font-size:18px;line-height:1.25;color:var(--porcelain)}
+.pmeta{font-size:14px;color:var(--stone)}
+.pdesc{font-size:14px;color:var(--stone-2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pby{font-size:13px;color:var(--stone-2)}
+.postform{max-width:520px;margin:22px auto 0;padding:18px 18px 16px;border-radius:16px;background:var(--glaze)}
+.postform .pf:first-child{margin-top:0}
+.postform textarea.notes{min-height:70px;background:var(--night)}
+.postform .field{background:var(--night)}
+.poststate{text-align:center;font-size:14px;color:var(--stone);margin:14px auto 0;max-width:46ch;line-height:1.5}
+.poststate.ok{color:var(--sage)}
+.poststate.bad{color:var(--danger)}
+.poststate .linkbtn{margin:0 0 0 6px;padding:0;font-size:14px}
+.confirm{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-top:16px;font-size:15px;color:var(--stone)}
+.confirm p{margin:0;width:100%;text-align:center}
+
 /* ── fix one part ───────────────────────────────── */
 .strip{position:relative;height:76px;margin:16px 0 6px;touch-action:pan-y}
 .strip canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:10px;background:var(--glaze);cursor:crosshair}
@@ -479,7 +530,6 @@ body.noscroll{overflow:hidden}
 .bplay .time{margin:0;text-align:left;line-height:1.35}
 .bplay .time small{display:block;font-size:14px;color:var(--stone-2)}
 .play.small{position:static;transform:none;width:54px;height:54px;flex:none}
-.paces{justify-content:center}
 .breathe .fine{margin:0 auto;font-size:14px;color:var(--stone-2);text-align:center;max-width:40ch;line-height:1.5}
 
 .center{text-align:center}
@@ -495,7 +545,10 @@ body.noscroll{overflow:hidden}
 .fail p{margin:0;color:var(--stone);font-size:15px;word-break:break-word}
 
 @media (max-width:520px){
-  header{padding:18px 20px 0}
+  header{padding:18px 20px 0;gap:10px}
+  .navbtn{padding:6px 12px}
+  /* the dot is enough on a phone; the words stay for screen readers */
+  #statusText{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   main{padding:0 20px 32px}
   .dock{margin:0 -20px;padding-left:20px;padding-right:20px}
   h1{margin-top:34px}
@@ -517,6 +570,10 @@ body.noscroll{overflow:hidden}
 
 <header>
   <div class="mark" id="home" role="button" tabindex="0">ResonaLife</div>
+  <nav class="nav" aria-label="Main">
+    <button class="navbtn" id="navCreate" aria-current="page">Create</button>
+    <button class="navbtn" id="navPosts" aria-current="false">Posts</button>
+  </nav>
   <div class="status" aria-live="polite"><i class="dot" id="dot"></i><span id="statusText">Connecting</span></div>
 </header>
 
@@ -575,6 +632,10 @@ body.noscroll{overflow:hidden}
     <div class="composer">
       <textarea id="own" rows="3" maxlength="1200" aria-label="Describe your session"
         placeholder="Describe how you feel now, how you want to feel, and any sounds you'd like."></textarea>
+      <button class="mic" id="mic" type="button" aria-label="Speak instead of typing" aria-pressed="false" hidden>
+        <svg class="micon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="6" height="10" rx="3"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5"/></svg>
+        <svg class="mstop" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"/></svg>
+      </button>
       <button class="send" id="send" aria-label="Create session" disabled>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5"/></svg>
       </button>
@@ -867,9 +928,10 @@ body.noscroll{overflow:hidden}
 </section>
 
 <!-- ══ listen ═══════════════════════════════════════ -->
-<section class="screen" id="sDone">
+<section class="screen" id="sDone" data-view="session">
   <p class="title" id="doneTitle"></p>
   <p class="titlesub" id="doneSub">Ready to listen. Headphones or a good speaker help.</p>
+  <p class="byline post-only" id="postByline"></p>
 
   <div class="bowl">
     <canvas id="wave" tabindex="0" role="slider" aria-label="Session position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
@@ -880,7 +942,7 @@ body.noscroll{overflow:hidden}
   <p class="time"><em id="tNow">0:00</em> of <span id="tAll">0:00</span></p>
   <div class="center"><button class="pill" id="breatheOpen" aria-haspopup="dialog"><i class="orbicon" aria-hidden="true"></i>Breathing guide</button></div>
 
-  <div class="versions" id="versions" hidden>
+  <div class="versions session-only" id="versions" hidden>
     <div class="chips" id="versionChips" role="group" aria-label="Versions of this session"></div>
     <p class="vnote" id="versionNote" aria-live="polite"></p>
   </div>
@@ -891,11 +953,31 @@ body.noscroll{overflow:hidden}
     <a class="btn solid" id="dlMp3" download>Download MP3</a>
     <a class="btn" id="dlWav" download>Download studio WAV</a>
     <button class="btn" id="loopCheck" hidden>Hear the loop point</button>
+    <button class="btn session-only" id="postOpen" aria-expanded="false" aria-controls="postForm">Post this</button>
+    <button class="btn post-only" id="postSession" hidden>Open the session</button>
+    <button class="btn post-only" id="postDelete">Delete post</button>
   </div>
+  <div class="confirm post-only" id="deleteConfirm" hidden>
+    <p>Delete this post for everyone? The session and its audio stay.</p>
+    <button class="btn solid" id="deleteYes">Delete</button>
+    <button class="btn" id="deleteNo">Keep</button>
+  </div>
+  <div class="postform session-only" id="postForm" hidden>
+    <label class="pf wide"><span>Title</span><input class="field" id="postTitle" type="text" maxlength="80"></label>
+    <label class="pf wide"><span>Description <small>optional</small></span><textarea class="notes" id="postDesc" rows="2" maxlength="300" placeholder="What it's for, or who it suits."></textarea></label>
+    <label class="pf wide"><span>Your name <small>optional</small></span><input class="field" id="postBy" type="text" maxlength="40"></label>
+    <p class="qnote" id="postWhich" hidden></p>
+    <p class="qnote">Everyone who signs in can see posts. A post has the music, its settings and what you write here; never the listener profile or the notes typed with the request.</p>
+    <div class="partgo">
+      <button class="btn solid" id="postGo">Post</button>
+      <button class="linkbtn small" id="postCancel">Cancel</button>
+    </div>
+  </div>
+  <p class="poststate" id="postState" aria-live="polite"></p>
   <p class="fine center" id="loopNote" hidden>This session loops: it plays until you stop it. “Hear the loop point” plays the last 10 seconds straight into the first 10, so any gap or jump shows up in the middle. To loop it on another device use the studio WAV, since MP3 files can add a short gap.</p>
 
   <div class="more">
-    <details id="reviewBox" hidden>
+    <details class="session-only" id="reviewBox" hidden>
       <summary>Before you play it for someone</summary>
       <div class="body">
         <p>Generated music can occasionally contain a surprise. Listen through yourself and tick each check.</p>
@@ -909,7 +991,7 @@ body.noscroll{overflow:hidden}
         <button class="btn" id="fixRegen">Fix and regenerate</button>
       </div>
     </details>
-    <details id="partBox">
+    <details class="session-only" id="partBox">
       <summary>Fix one part</summary>
       <div class="body">
         <p>Mark the part that went wrong and say what it was. Only that part is made again, carried in and out by the music around it; the rest of the session stays exactly as it is.</p>
@@ -948,7 +1030,16 @@ body.noscroll{overflow:hidden}
     </details>
   </div>
 
-  <div class="center"><button class="linkbtn" id="again">Create another session</button></div>
+  <div class="center session-only"><button class="linkbtn" id="again">Create another session</button></div>
+  <div class="center post-only"><button class="linkbtn" id="backToPosts">Back to Posts</button></div>
+</section>
+
+<!-- ══ posts ════════════════════════════════════════ -->
+<section class="screen" id="sPosts">
+  <h1>Posts</h1>
+  <p class="lede">Sessions saved for everyone who signs in. Open one to listen, or to breathe along with it.</p>
+  <div class="postgrid" id="postGrid"></div>
+  <p class="empty" id="postsNote" aria-live="polite"></p>
 </section>
 
 <!-- ══ error ════════════════════════════════════════ -->
@@ -992,9 +1083,8 @@ body.noscroll{overflow:hidden}
     </button>
     <p class="time"><em id="bNow">0:00</em> of <span id="bAll">0:00</span><small id="bPhase"></small></p>
   </div>
-  <div class="chips paces" id="paces" role="group" aria-label="Breathing pace"></div>
-  <p class="fine" id="paceNote"></p>
-  <p class="fine">The circle grows as you breathe in and shrinks as you breathe out. Breathe along only if it feels comfortable; if it doesn’t, breathe normally and just listen.</p>
+  <p class="fine" id="tempoNote" aria-live="polite"></p>
+  <p class="fine">The circle grows as you breathe in and shrinks as you breathe out, in time with the beat of the music, and waits while it’s paused. Breathe along only if it feels comfortable; if it doesn’t, breathe normally and just listen.</p>
 </div>
 
 <audio id="audio" preload="metadata"></audio>
@@ -1292,13 +1382,14 @@ const ISO_PART_FIXES = [
   { id:'dark',       name:'Sad, dark or eerie' },
 ];
 
-/* breathing guide paces. 4 in, 6 out is about six breaths a minute, the slow cycle the
-   pain relief prompts phrase the music in (bpm / 6 beats a phrase: 4 in, 6 out at 60 BPM). */
-const PACES = [
-  { id:'4-6', name:'4 in, 6 out', inS:4, outS:6 },
-  { id:'3-4', name:'3 in, 4 out', inS:3, outS:4 },
-  { id:'5-7', name:'5 in, 7 out', inS:5, outS:7 },
-];
+/* breathing. The guide breathes with the track: in for 4 beats and out for 6 at the
+   tempo of the phase playing, the guideline's slow breath (4 in, 6 out at 60 BPM). A
+   breath spans 10 beats from 40 to 100 BPM (6 to 15 seconds); outside that it's 5 or
+   20 beats, so a breath never gets uncomfortably long or short. The waiting screen has
+   no track yet, so it breathes 4 seconds in and 6 out. */
+const BREATH_IN = 0.4;                                     // 4 of every 10 beats in, 6 out
+const beatsPerBreath = bpm => bpm < 40 ? 5 : bpm > 100 ? 20 : 10;
+const WAIT_PACE = { inS:4, outS:6 };
 
 const PHASES = {
   match:      { color:'--ember', label:'Meets you',   step:'Composing the opening', text:'Matched to how you feel right now.' },
@@ -1402,7 +1493,6 @@ const state = {
   pain:{ ...PAIN_DEFAULTS },
   dementia:{ ...DM_DEFAULTS },
   depression:{ ...DP_DEFAULTS },
-  breathPace:'4-6',
 };
 try { Object.assign(state, JSON.parse(localStorage.getItem('resonalife:prefs') || '{}')); } catch {}
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -1416,11 +1506,10 @@ state.depression = { ...DP_DEFAULTS, ...(isObj(state.depression) ? state.depress
   if (!isObj(s.profile)) s.profile = {};
 });
 if (!['guided', 'own', 'pain', 'dementia', 'depression'].includes(state.mode)) state.mode = 'guided';
-if (!PACES.some(p => p.id === state.breathPace)) state.breathPace = '4-6';
 const save = () => { try { localStorage.setItem('resonalife:prefs', JSON.stringify(state)); } catch {} };
 
 let pollTimer = null, tickTimer = null, startedAt = 0;
-let lastRequest = null, lastSeed = null, lastMode = 'iso', lastOptions = null, shownJob = null;
+let lastRequest = null, lastSeed = null, lastMode = 'iso', lastOptions = null, shownJob = null, shownPost = null;
 
 /* ── mode ────────────────────────────────────────── */
 const LEDES = {
@@ -1435,6 +1524,7 @@ const MODE_UI = { guided:['modeGuided', 'panelGuided'], own:['modeOwn', 'panelOw
                   dementia:['modeDementia', 'panelDementia'], depression:['modeDepression', 'panelDepression'] };
 
 function setMode(mode){
+  if (mode !== 'own') stopListening(true);
   state.mode = mode; save();
   Object.entries(MODE_UI).forEach(([m, [btn, panel]]) => {
     $(btn).setAttribute('aria-pressed', m === mode);
@@ -2155,6 +2245,60 @@ function renderIdeas(){
   });
 }
 
+/* ── speaking instead of typing ──────────────────── */
+// The browser's own speech recognition (Chrome, Edge, Safari) types what you say into
+// the box, and it's sent like anything typed. Browsers without it (Firefox) never show
+// the microphone. It listens for English, the language the music prompts are written in.
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const MIC_ERRORS = {
+  'not-allowed':         'The microphone is blocked for this site. Allow it in your browser settings, or type instead.',
+  'service-not-allowed': 'The microphone is blocked for this site. Allow it in your browser settings, or type instead.',
+  'audio-capture':       'No microphone was found. Check that one is connected, or type instead.',
+  'network':             'Your browser’s speech service couldn’t be reached. Check your connection, or type instead.',
+  'no-speech':           'Didn’t hear anything. Tap the microphone and try again.',
+  'aborted':             '',
+};
+let listening = null;
+
+function setMic(on){
+  $('mic').setAttribute('aria-pressed', String(on));
+  $('mic').setAttribute('aria-label', on ? 'Stop listening' : 'Speak instead of typing');
+}
+function listeningHint(){
+  $('lenHint').className = 'hint';
+  $('lenHint').textContent = 'Listening… say how you feel and what you’d like to hear. Tap the microphone again when you’re done.';
+}
+function startListening(){
+  const rec = new Recognition();
+  rec.lang = 'en-US';
+  rec.continuous = true;
+  rec.interimResults = true;
+  const before = $('own').value.trim();   // speaking adds to what's already typed
+  let problem = '';
+  rec.onresult = e => {
+    const said = Array.from(e.results, r => r[0].transcript.trim()).filter(Boolean).join(' ');
+    $('own').value = [before, said].filter(Boolean).join(' ');
+    state.own = $('own').value; save(); autosize(); renderOwnHint(); listeningHint();
+  };
+  rec.onerror = e => { problem = MIC_ERRORS[e.error] ?? `Voice input stopped (${e.error}). You can type instead.`; };
+  rec.onend = () => {
+    if (listening !== rec) return;          // stopped by sending or leaving the panel
+    listening = null; setMic(false); renderOwnHint();
+    if (problem) { $('lenHint').className = 'hint warn'; $('lenHint').textContent = problem; }
+  };
+  try { rec.start(); } catch { return; }
+  listening = rec; setMic(true); listeningHint();
+}
+// abort: stop at once and keep the text as it is (sending, or leaving the panel)
+function stopListening(abort = false){
+  if (!listening) return;
+  const rec = listening;
+  if (abort) { listening = null; setMic(false); rec.abort(); } else rec.stop();
+}
+
+if (Recognition) $('mic').hidden = false;
+$('mic').onclick = () => listening ? stopListening() : startListening();
+
 /* ── status ──────────────────────────────────────── */
 async function health(){
   try {
@@ -2212,7 +2356,12 @@ async function loadRecent(){
 function show(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
   if (id !== 'sLoading') stopBreath();
+  setNav(id === 'sPosts' ? 'posts' : 'create');
   window.scrollTo({ top:0, behavior:'instant' });
+}
+function setNav(which){
+  $('navCreate').setAttribute('aria-current', which === 'create' ? 'page' : 'false');
+  $('navPosts').setAttribute('aria-current', which === 'posts' ? 'page' : 'false');
 }
 
 function toCompose(){
@@ -2292,28 +2441,36 @@ async function poll(id){
 // the circle grows and "Breathe out" while it shrinks, however long it runs or however
 // often the tab sleeps. Each breath eases in and out the way a real one does. With
 // reduced motion the circle doesn't move: it brightens and dims instead.
-function breather(el, textEl, lo, hi){
-  let raf = 0, t0 = 0, pace = PACES[0], word = '';
+// k: 0 breathed out, 1 breathed in
+function paintBreath(el, lo, hi, k){
+  if (reducedMotion) el.style.opacity = (0.45 + 0.55 * k).toFixed(3);
+  else el.style.transform = `scale(${(lo + (hi - lo) * k).toFixed(4)})`;
+}
+// where in a breath frac (0..1) is, with the in-breath taking its first share r
+function breathShape(frac, r){
+  const inhale = frac < r;
+  const ease = 0.5 - 0.5 * Math.cos(Math.PI * (inhale ? frac / r : (frac - r) / (1 - r)));
+  return { inhale, k: inhale ? ease : 1 - ease };
+}
+function breather(el, textEl, lo, hi, pace = WAIT_PACE){
+  let raf = 0, t0 = 0, word = '';
   const frame = now => {
-    const inMs = pace.inS * 1000, cycle = inMs + pace.outS * 1000;
-    const t = (now - t0) % cycle, inhale = t < inMs;
-    const ease = 0.5 - 0.5 * Math.cos(Math.PI * (inhale ? t / inMs : (t - inMs) / (cycle - inMs)));
-    const k = inhale ? ease : 1 - ease;                  // 0 breathed out, 1 breathed in
-    if (reducedMotion) el.style.opacity = (0.45 + 0.55 * k).toFixed(3);
-    else el.style.transform = `scale(${(lo + (hi - lo) * k).toFixed(4)})`;
+    const cycle = (pace.inS + pace.outS) * 1000;
+    const { inhale, k } = breathShape(((now - t0) % cycle) / cycle, pace.inS / (pace.inS + pace.outS));
+    paintBreath(el, lo, hi, k);
     const w = inhale ? 'Breathe in' : 'Breathe out';
     if (w !== word) textEl.textContent = word = w;
     raf = requestAnimationFrame(frame);
   };
   return {
-    start(p){ cancelAnimationFrame(raf); pace = p || pace; word = ''; t0 = performance.now(); raf = requestAnimationFrame(frame); },
+    start(){ cancelAnimationFrame(raf); word = ''; t0 = performance.now(); raf = requestAnimationFrame(frame); },
     stop(){ cancelAnimationFrame(raf); raf = 0; el.style.transform = ''; el.style.opacity = ''; },
   };
 }
 
 /* ── creating screen ─────────────────────────────── */
 const waitBreath = breather($('breath'), $('breathText'), 0.84, 1);
-function startBreath(){ waitBreath.start(PACES[0]); }
+function startBreath(){ waitBreath.start(); }
 function stopBreath(){ waitBreath.stop(); }
 
 function arcPath(cx, cy, r, a0, a1){
@@ -2431,9 +2588,10 @@ let versions = [], current = null;       // every version of the shown session, 
 function listen(job){
   const r = job.result;
   const care = CARE_MODES.includes(r.mode || job.mode);
-  const ending = r.ending || null;
-  shownJob = job;
+  closeGuide();
+  shownJob = job; shownPost = null;
   show('sDone');
+  $('sDone').dataset.view = 'session';
   sessionTitle = titleOf(job.request);
   $('doneTitle').textContent = sessionTitle;
   $('doneSub').textContent = care
@@ -2448,6 +2606,20 @@ function listen(job){
   try { pick = Number(localStorage.getItem('resonalife:version:' + job.id)); } catch {}
   const chosen = versions.find(v => (v.version || 1) === pick) || versions[versions.length - 1];
 
+  setupPlayer(r);
+  $('reviewBox').hidden = !care;
+  if (care) renderChecklist(job);
+  resetFix(job, r);
+  resetPostForm();
+  showVersion(chosen);
+  markPosted(job);
+  mediaTitle(sessionTitle);
+}
+
+// What a session and a post share on the listen screen: the arc's colours, the legend,
+// the prompts, the loop note and the player.
+function setupPlayer(r){
+  const ending = r.ending || null;
   const total = r.segments.reduce((a, s) => a + s.duration_s, 0) || 1;
   let acc = 0;
   bounds = r.segments.map(s => { acc += s.duration_s; return { end: acc / total, color: phaseColor(s.name) }; });
@@ -2464,10 +2636,7 @@ function listen(job){
     legend.append(li);
     if (r.prompts && r.prompts[k]) donePrompts.append(phaseBlock(k, r.prompts[k], mmss(secs), ending));
   });
-
   $('loopNote').hidden = ending !== 'loop';
-  $('reviewBox').hidden = !care;
-  if (care) renderChecklist(job);
 
   const a = $('audio');
   a.ontimeupdate = () => {
@@ -2479,12 +2648,11 @@ function listen(job){
   a.onplay = () => setPlayIcon(true);
   a.onpause = () => setPlayIcon(false);
   a.onended = () => setPlayIcon(false);
+}
 
-  resetFix(job, r);
-  showVersion(chosen);
-
+function mediaTitle(title){
   if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: sessionTitle, artist: 'ResonaLife' });
+    navigator.mediaSession.metadata = new MediaMetadata({ title, artist: 'ResonaLife' });
   }
 }
 
@@ -2494,7 +2662,7 @@ function listen(job){
 function showVersion(r, { at = 0, play = false } = {}){
   const a = $('audio');
   current = r;
-  try { localStorage.setItem('resonalife:version:' + shownJob.id, String(r.version || 1)); } catch {}
+  if (shownJob) try { localStorage.setItem('resonalife:version:' + shownJob.id, String(r.version || 1)); } catch {}
   peaks = r.peaks || [];
   fix.stopAt = null;
   a.loop = r.ending === 'loop';
@@ -2519,6 +2687,7 @@ function showVersion(r, { at = 0, play = false } = {}){
   if (r.loop_check_url) $('loopAudio').src = r.loop_check_url; else $('loopAudio').removeAttribute('src');
 
   renderVersions();
+  updatePostButton();
   requestAnimationFrame(() => { drawWave(progress()); drawStrip(); updateGuide(); });
 }
 
@@ -3029,25 +3198,82 @@ function stripTime(e){
 }
 
 /* ── breathing guide ─────────────────────────────── */
-const guide = breather($('orb'), $('cue'), 0.64, 1);   // at its smallest the words still fit inside
-let guideFrom = null, wakeLock = null;
-const paceOf = id => PACES.find(p => p.id === id) || PACES[0];
+// The breath follows the track, not a clock: it's worked out from where the music is,
+// so it waits while the music is paused and follows it when it jumps.
+const segPhase = s => s.phase || base(s.name);
+let guideFrom = null, wakeLock = null, guideRaf = 0, clock = { ct:-1, at:0 }, tempoText = '';
 
-function renderPaces(){
-  chipGroup($('paces'), PACES, state.breathPace, id => {
-    state.breathPace = id; save(); renderPaces(); guide.start(paceOf(id));
+// the BPM a prompt states (pipeline.prompt_bpm), for sessions made before results carried it
+const PROMPT_TEMPO = /(\d{2,3})(?:\s*(?:-|–|to)\s*(\d{2,3}))?\s*(?:BPM|beats per minute)\b|\bBPM\s*[:=]?\s*(\d{2,3})\b/i;
+function promptBpm(text){
+  const m = PROMPT_TEMPO.exec(String(text || ''));
+  if (!m) return null;
+  const lo = Number(m[1] || m[3]), hi = Number(m[2] || lo), bpm = Math.round((lo + hi) / 2);
+  return bpm >= 30 && bpm <= 200 ? bpm : null;
+}
+
+// each phase's BPM: the result's own (pipeline.session_tempo), else worked out the same way
+function tempoOf(r){
+  if (r.tempo) return r.tempo;
+  const o = r.settings || {}, names = [...new Set((r.segments || []).map(segPhase))];
+  if (r.mode === 'depression' && o.session_mode === 'activation' && o.bpm_end) {
+    const steps = Math.max(1, names.length - 1);
+    return Object.fromEntries(names.map((n, i) => [n, Math.round(o.bpm + (o.bpm_end - o.bpm) * i / steps)]));
+  }
+  if (CARE_MODES.includes(r.mode) && o.bpm) return Object.fromEntries(names.map(n => [n, o.bpm]));
+  return Object.fromEntries(names.map(n => [n, promptBpm((r.prompts || {})[n])]));
+}
+
+// The session as tempo spans, each with how many breaths have passed where it starts, so a
+// change of tempo changes how fast the circle breathes without making it jump. A part with
+// no steady beat breathes as at 60 BPM: 4 seconds in, 6 out.
+function breathPlan(r){
+  if (r._breath) return r._breath;
+  const tempo = tempoOf(r), plan = [];
+  let t = 0;
+  r.segments.forEach(s => {
+    const name = segPhase(s), a = t;
+    t += s.duration_s;
+    const last = plan[plan.length - 1];
+    if (last && last.name === name) { last.b = t; return; }
+    const bpm = tempo[name] || null, beat = bpm || 60, n = beatsPerBreath(beat);
+    plan.push({ name, a, b: t, bpm, beat, n, inBeats: Math.round(n * BREATH_IN), start: 0 });
   });
-  const p = paceOf(state.breathPace);
-  $('paceNote').textContent = `About ${Math.round(60 / (p.inS + p.outS))} breaths a minute.`;
+  let breaths = 0;
+  plan.forEach(sp => { sp.start = breaths; breaths += (sp.b - sp.a) * sp.beat / 60 / sp.n; });
+  Object.defineProperty(r, '_breath', { value: plan });     // not enumerable: never sent anywhere
+  return plan;
+}
+function breathAt(r, t){
+  const plan = breathPlan(r);
+  const sp = plan.find(x => t < x.b) || plan[plan.length - 1];
+  const breaths = sp.start + Math.max(0, t - sp.a) * sp.beat / 60 / sp.n;
+  return { sp, frac: breaths - Math.floor(breaths) };
+}
+
+function guideFrame(now){
+  const a = $('audio');
+  // the track's position, smoothed between the audio clock's updates
+  if (a.currentTime !== clock.ct) clock = { ct:a.currentTime, at:now };
+  const t = a.paused ? a.currentTime : clock.ct + Math.min(0.5, (now - clock.at) / 1000) * (a.playbackRate || 1);
+  const { sp, frac } = breathAt(current, t);
+  const { inhale, k } = breathShape(frac, sp.inBeats / sp.n);
+  paintBreath($('orb'), 0.64, 1, k);      // at its smallest the words still fit inside
+  const word = !a.paused ? (inhale ? 'Breathe in' : 'Breathe out') : a.currentTime < 0.05 ? 'Press play' : 'Paused';
+  if ($('cue').textContent !== word) $('cue').textContent = word;
+  guideRaf = requestAnimationFrame(guideFrame);
 }
 
 function openGuide(){
+  if (!current) return;
   guideFrom = document.activeElement;
   $('breathe').hidden = false;
   document.body.classList.add('noscroll');
-  renderPaces();
-  guide.start(paceOf(state.breathPace));
+  tempoText = '';
   updateGuide();
+  cancelAnimationFrame(guideRaf);
+  clock = { ct:-1, at:0 };
+  guideRaf = requestAnimationFrame(guideFrame);
   $('breatheClose').focus();
   lockScreen();
 }
@@ -3055,7 +3281,9 @@ function closeGuide(){
   if ($('breathe').hidden) return;
   $('breathe').hidden = true;
   document.body.classList.remove('noscroll');
-  guide.stop();
+  cancelAnimationFrame(guideRaf);
+  guideRaf = 0;
+  $('orb').style.transform = ''; $('orb').style.opacity = '';
   releaseScreen();
   if (guideFrom && document.contains(guideFrom)) guideFrom.focus();
 }
@@ -3074,7 +3302,7 @@ function phaseSpans(r){
   return spans;
 }
 
-// the session ring round the circle, the time and the phase playing now
+// the session ring round the circle, the time, the phase playing now and its breath
 function updateGuide(){
   if ($('breathe').hidden || !current) return;
   const prog = progress(), spans = phaseSpans(current);
@@ -3101,6 +3329,11 @@ function updateGuide(){
     $('bPhase').textContent = phaseInfo(now.name, current.ending).label;
     $('orb').style.setProperty('--orb', phaseColor(now.name));
   }
+  const { sp } = breathAt(current, $('audio').currentTime);
+  const text = sp.bpm
+    ? `In for ${sp.inBeats} beats and out for ${sp.n - sp.inBeats}, at ${sp.bpm} BPM: about ${Math.round(sp.bpm / sp.n)} breaths a minute.`
+    : 'This part has no steady beat, so 4 seconds in and 6 out.';
+  if (text !== tempoText) $('tempoNote').textContent = tempoText = text;
 }
 
 // keep the screen on while the guide is open; the browser drops the lock when the tab hides
@@ -3110,6 +3343,258 @@ async function lockScreen(){
 function releaseScreen(){
   try { if (wakeLock) wakeLock.release(); } catch {}
   wakeLock = null;
+}
+
+/* ── posts ───────────────────────────────────────── */
+// A post is one version of a session, saved for everyone who signs in (posts.py). It
+// opens on the listen screen with the player, the breathing guide and the downloads;
+// fixing parts and posting belong to the session.
+const MODE_NAMES = { iso:'Session', pain_relief:'Pain relief', dementia:'Dementia', depression:'Depression' };
+let postedVersions = new Map();      // the shown session's versions that are in Posts: version -> post id
+
+function dateWords(iso){
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString(undefined, d.getFullYear() === new Date().getFullYear()
+    ? { month:'short', day:'numeric' } : { year:'numeric', month:'short', day:'numeric' });
+}
+const byline = p => `Posted${p.author ? ` by ${p.author}` : ''}${dateWords(p.created_at) ? ` on ${dateWords(p.created_at)}` : ''}`;
+
+function toPosts(message){
+  clearInterval(pollTimer); clearInterval(tickTimer);
+  closeGuide(); stopFix(); stopAudio();
+  shownJob = null; shownPost = null;
+  show('sPosts');
+  loadPosts(message);
+}
+
+async function loadPosts(message){
+  const grid = $('postGrid'), note = $('postsNote');
+  const say = text => { note.textContent = text || ''; note.hidden = !text; };
+  grid.innerHTML = '';
+  say(message || 'Loading posts…');
+  let list;
+  try {
+    const r = await fetch('/posts');
+    if (!r.ok) throw new Error();
+    list = await r.json();
+  } catch {
+    say('Posts could not be loaded. Check your connection and refresh.');
+    return;
+  }
+  if (!$('sPosts').classList.contains('on')) return;
+  say(message || (list.length ? '' : 'Nothing posted yet. Open a finished session and press “Post this”.'));
+  list.forEach(p => grid.append(postCard(p)));
+  requestAnimationFrame(() => grid.querySelectorAll('canvas').forEach(drawMiniBowl));
+}
+
+function postCard(p){
+  const b = document.createElement('button');
+  b.className = 'post';
+  const c = document.createElement('canvas');
+  c.setAttribute('aria-hidden', 'true');
+  c._post = p;
+  const text = document.createElement('span');
+  text.className = 'ptext';
+  const add = (cls, t) => { if (t) text.append(Object.assign(document.createElement('span'), { className:cls, textContent:t })); };
+  const meta = [MODE_NAMES[p.mode] || 'Session', mmss(p.duration_s)];
+  if (p.ending) meta.push(END_NAMES[p.ending]);
+  add('ptitle', p.title);
+  add('pmeta', meta.join(' · '));
+  add('pdesc', p.description);
+  add('pby', byline(p));
+  b.append(c, text);
+  b.onclick = () => openPost(p.id);
+  return b;
+}
+
+// a card's bowl: the post's waveform round a small rim, coloured by phase, round a play disc
+function drawMiniBowl(c){
+  const p = c._post, size = c.clientWidth;
+  if (!p || size < 20) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = size * dpr; c.height = size * dpr;
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const mid = size / 2, inner = size * 0.29, reach = size * 0.17;
+  const total = p.segments.reduce((x, s) => x + s.duration_s, 0) || 1;
+  let acc = 0;
+  const ends = p.segments.map(s => { acc += s.duration_s; return { end: acc / total, color: phaseColor(s.name) }; });
+  const pk = p.thumb || [], n = 64;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1.4, size / 60);
+  for (let i = 0; i < n; i++) {
+    const frac = i / n, v = pk[Math.floor(frac * pk.length)] || 0;
+    const ang = frac * Math.PI * 2 - Math.PI / 2, len = 2 + v * reach;
+    const seg = ends.find(e => frac <= e.end) || ends[ends.length - 1];
+    ctx.strokeStyle = seg ? seg.color : css('--stone');
+    ctx.beginPath();
+    ctx.moveTo(mid + Math.cos(ang) * inner, mid + Math.sin(ang) * inner);
+    ctx.lineTo(mid + Math.cos(ang) * (inner + len), mid + Math.sin(ang) * (inner + len));
+    ctx.stroke();
+  }
+  ctx.fillStyle = css('--honey');
+  ctx.beginPath(); ctx.arc(mid, mid, size * 0.17, 0, Math.PI * 2); ctx.fill();
+  const t = size * 0.065;
+  ctx.fillStyle = css('--on-honey');
+  ctx.beginPath(); ctx.moveTo(mid - t * 0.6, mid - t); ctx.lineTo(mid + t, mid); ctx.lineTo(mid - t * 0.6, mid + t); ctx.closePath(); ctx.fill();
+}
+
+async function openPost(id){
+  let post;
+  try {
+    const r = await fetch('/posts/' + id);
+    if (r.status === 404) return toPosts('That post has been deleted.');
+    if (!r.ok) throw new Error();
+    post = await r.json();
+  } catch {
+    return toPosts('That post could not be opened. Check your connection and try again.');
+  }
+  showPost(post);
+}
+
+function showPost(post){
+  clearInterval(pollTimer); clearInterval(tickTimer);
+  closeGuide(); stopFix();
+  shownJob = null; shownPost = post;
+  show('sDone');
+  setNav('posts');
+  $('sDone').dataset.view = 'post';
+  sessionTitle = post.title;
+  $('doneTitle').textContent = post.title;
+  $('doneSub').textContent = post.description || 'Ready to listen. Headphones or a good speaker help.';
+  $('postByline').textContent = byline(post);
+  $('doneWords').hidden = true;
+  showSettings($('doneSettings'), { mode: post.mode, result: { settings: post.settings }, request: '' });
+  versions = [post];
+  setupPlayer(post);
+  $('deleteConfirm').hidden = true;
+  $('postDelete').hidden = false;
+  $('postSession').hidden = true;
+  postState('');
+  showVersion(post);
+  // the session itself opens while the server still has it (to fix a part of it, say)
+  fetch('/jobs/' + post.session_id).then(r => r.ok ? r.json() : null).then(job => {
+    if (job && shownPost === post && job.status === 'done') $('postSession').hidden = false;
+  }).catch(() => {});
+  mediaTitle(post.title);
+}
+
+function postState(text, kind, link){
+  const el = $('postState');
+  el.textContent = text || '';
+  el.className = 'poststate' + (kind ? ' ' + kind : '');
+  if (link) {
+    const b = Object.assign(document.createElement('button'), { className:'linkbtn', textContent:link.label });
+    b.onclick = link.go;
+    el.append(' ', b);
+  }
+}
+
+function resetPostForm(){
+  postedVersions = new Map();
+  $('postForm').hidden = true;
+  $('postOpen').setAttribute('aria-expanded', 'false');
+  $('postTitle').value = '';
+  $('postDesc').value = '';
+  postState('');
+}
+
+// which of the shown session's versions are in Posts already
+async function markPosted(job){
+  try {
+    const r = await fetch('/posts');
+    if (!r.ok) return;
+    const list = await r.json();
+    if (shownJob !== job) return;
+    postedVersions = new Map(list.filter(p => p.session_id === job.id).map(p => [p.version, p.id]));
+    updatePostButton();
+  } catch {}
+}
+
+function updatePostButton(){
+  const posted = current && postedVersions.get(current.version || 1);
+  $('postOpen').textContent = posted ? 'View post' : 'Post this';
+  if (posted) { $('postForm').hidden = true; $('postOpen').setAttribute('aria-expanded', 'false'); }
+  $('postWhich').hidden = versions.length < 2 || !current;
+  if (current && versions.length > 1) $('postWhich').textContent = `This posts ${versionName(current)}, the version playing now.`;
+}
+
+function togglePostForm(){
+  const posted = current && postedVersions.get(current.version || 1);
+  if (posted) return openPost(posted);
+  const open = $('postForm').hidden;
+  $('postForm').hidden = !open;
+  $('postOpen').setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  if (!$('postTitle').value) $('postTitle').value = sessionTitle;
+  try { $('postBy').value = localStorage.getItem('resonalife:postBy') || ''; } catch {}
+  postState('');
+  $('postTitle').focus();
+}
+
+async function submitPost(){
+  const job = shownJob, v = current;
+  if (!job || !v) return;
+  const title = $('postTitle').value.trim();
+  if (!title) { postState('Give the post a title.', 'bad'); $('postTitle').focus(); return; }
+  const author = $('postBy').value.trim();
+  try { localStorage.setItem('resonalife:postBy', author); } catch {}
+  $('postGo').disabled = true;
+  postState('Posting…');
+  try {
+    const r = await fetch('/posts', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ job_id: job.id, version: v.version || 1, title, description: $('postDesc').value.trim(), author }),
+    });
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (r.status === 409) markPosted(job);
+      throw new Error((Array.isArray(b.detail) ? b.detail.map(x => x.msg).join('; ') : b.detail)
+                      || `The server answered with status ${r.status}. Try again in a moment.`);
+    }
+    if (shownJob !== job) return;
+    postedVersions.set(b.version, b.id);
+    $('postForm').hidden = true;
+    $('postOpen').setAttribute('aria-expanded', 'false');
+    updatePostButton();
+    postState(`Posted as “${b.title}”.`, 'ok', { label:'See it in Posts', go:() => toPosts() });
+  } catch (e) {
+    postState(/fetch|network/i.test(e.message) ? 'The server could not be reached. Check your connection and try again.' : e.message, 'bad');
+  } finally {
+    $('postGo').disabled = false;
+  }
+}
+
+async function deletePost(){
+  const post = shownPost;
+  if (!post) return;
+  $('deleteYes').disabled = true;
+  try {
+    const r = await fetch('/posts/' + post.id, { method:'DELETE' });
+    if (!r.ok && r.status !== 404) throw new Error();
+    toPosts('Post deleted. Its session and audio are still on the server.');
+  } catch {
+    postState('The post could not be deleted. Try again.', 'bad');
+  } finally {
+    $('deleteYes').disabled = false;
+  }
+}
+
+async function openPostSession(){
+  const post = shownPost;
+  if (!post) return;
+  try {
+    const r = await fetch('/jobs/' + post.session_id);
+    if (!r.ok) throw new Error();
+    const job = await r.json();
+    try { localStorage.setItem('resonalife:version:' + job.id, String(post.version)); } catch {}
+    listen(job);
+  } catch {
+    $('postSession').hidden = true;
+    postState('The session is no longer on the server. The post keeps its music.', 'bad');
+  }
 }
 
 /* ── error screen ────────────────────────────────── */
@@ -3194,6 +3679,7 @@ $('own').addEventListener('keydown', e => {
 });
 $('send').onclick = () => {
   if ($('send').disabled) return;
+  stopListening(true);
   const text = $('own').value.trim();
   if (text) submit(text, seedValue());
 };
@@ -3231,6 +3717,8 @@ $('loopAudio').onpause = $('loopAudio').onended = () => { $('loopCheck').textCon
 $('back').onclick = toCompose;
 $('again').onclick = toCompose;
 $('home').onclick = toCompose;
+$('navCreate').onclick = toCompose;
+$('navPosts').onclick = () => toPosts();
 $('home').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toCompose(); } };
 
 $('play').onclick = () => {
@@ -3346,6 +3834,17 @@ $('addPart').onclick = () => {
 $('partGo').onclick = submitFix;
 $('partBox').addEventListener('toggle', () => { if ($('partBox').open) requestAnimationFrame(drawStrip); });
 
+/* posts: post a version from the listen screen; a post opens there too */
+$('postOpen').onclick = togglePostForm;
+$('postCancel').onclick = () => { $('postForm').hidden = true; $('postOpen').setAttribute('aria-expanded', 'false'); $('postOpen').focus(); };
+$('postGo').onclick = submitPost;
+$('postTitle').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitPost(); } });
+$('postDelete').onclick = () => { $('deleteConfirm').hidden = false; $('postDelete').hidden = true; $('deleteNo').focus(); };
+$('deleteNo').onclick = () => { $('deleteConfirm').hidden = true; $('postDelete').hidden = false; $('postDelete').focus(); };
+$('deleteYes').onclick = deletePost;
+$('postSession').onclick = openPostSession;
+$('backToPosts').onclick = () => toPosts();
+
 /* breathing guide: a dialog over the listen screen, Escape or the cross closes it */
 $('breatheOpen').onclick = openGuide;
 $('breatheClose').onclick = closeGuide;
@@ -3364,6 +3863,7 @@ document.addEventListener('visibilitychange', () => {
 
 window.addEventListener('resize', () => {
   if ($('sDone').classList.contains('on')) { drawWave(progress()); drawStrip(); }
+  if ($('sPosts').classList.contains('on')) $('postGrid').querySelectorAll('canvas').forEach(drawMiniBowl);
 });
 
 renderChoices();

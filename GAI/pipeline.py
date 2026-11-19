@@ -2373,6 +2373,37 @@ def inpaint_limits():
             'max_parts': config.INPAINT_MAX_PARTS, 'context_s': config.INPAINT_CTX_S}
 
 
+# The tempo an ISO prompt states: "at 72 BPM", "60-65 BPM", "BPM: 70". Its settle
+# phase may have none ("no discernible tempo").
+PROMPT_TEMPO = re.compile(
+    r'(\d{2,3})(?:\s*(?:-|–|to)\s*(\d{2,3}))?\s*(?:BPM|beats per minute)\b|\bBPM\s*[:=]?\s*(\d{2,3})\b',
+    re.IGNORECASE,
+)
+
+
+def prompt_bpm(text):
+    """The BPM a prompt states (the middle of a range), or None if it states none."""
+    m = PROMPT_TEMPO.search(str(text or ''))
+    if not m:
+        return None
+    lo = int(m.group(1) or m.group(3))
+    hi = int(m.group(2) or lo)
+    bpm = int((lo + hi) / 2 + 0.5)
+    return bpm if 30 <= bpm <= 200 else None
+
+
+def session_tempo(mode, settings, prompts):
+    """Each phase's BPM, for the page's breathing guide, which breathes 4 beats in and
+    6 out: a guideline module's own tempo (rising phase by phase in Gentle activation),
+    or what each ISO prompt says, None where a prompt gives no tempo."""
+    s = settings or {}
+    if mode == 'depression' and s.get('session_mode') == 'activation' and s.get('bpm_end'):
+        return depression_phase_bpm(config.DEPRESSION_ARCS['activation'], s)
+    if mode in GUIDELINE_MODULES and s.get('bpm'):
+        return {name: s['bpm'] for name in prompts}
+    return {name: prompt_bpm(text) for name, text in (prompts or {}).items()}
+
+
 def ending_post(ending, total_duration_s):
     """apply_post_eq's settings for a session's ending: a fade to silence over the
     last FADE_SHARE of the session, a soft close's short tail, a loop point folded
@@ -2534,6 +2565,7 @@ def generate_session(session_request, seed=None, log=None, on_segment=None,
         'duration_s': len(track) / SR,
         'prompts': phase_prompts,
         'segments': [{'name': s['name'], 'phase': s['phase'], 'duration_s': s['duration_s']} for s in segments],
+        'tempo': session_tempo('iso', None, phase_prompts),
         'limits': inpaint_limits(),
     }
 
@@ -2590,6 +2622,7 @@ def render_arc_session(mode, session_request, arc, phase_prompts, settings, seed
         'duration_s': sf.info(eq_path).duration,   # the loop ending is a few seconds shorter than the render
         'prompts': phase_prompts,
         'segments': [{'name': s['name'], 'phase': s['phase'], 'duration_s': s['duration_s']} for s in segments],
+        'tempo': session_tempo(mode, settings, phase_prompts),
         'limits': inpaint_limits(),
     }
 
@@ -3076,5 +3109,6 @@ def inpaint_session(base, parts, fixes=None, note='', seed=None, log=None, on_se
         'duration_s': sf.info(eq_path).duration,
         'prompts': prompts,
         'segments': segments,
+        'tempo': base.get('tempo') or session_tempo(mode, settings, prompts),
         'limits': inpaint_limits(),
     }

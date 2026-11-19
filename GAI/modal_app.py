@@ -7,7 +7,8 @@ Two containers behind one URL:
 pipeline.py, config.py and static/index.html are used unchanged. Every session
 mode (ISO, and the guideline's pain relief, dementia and depression modules) goes
 through the same POST /generate, and POST /inpaint regenerates parts of a finished
-session as a new version of it — see server.py for the request bodies.
+session as a new version of it. The Posts tab's routes (/posts) keep one JSON file per
+post on the outputs volume (posts.py) — see server.py for the request bodies.
 
 Run from the GAI folder (next to pipeline.py, config.py, static/, stable-audio-3-main/):
   python -m modal run modal_app.py       one-time: build image + download weights
@@ -61,8 +62,9 @@ def result_for_page(result):
         'loop_check_url': f'/audio/{folder}/{Path(loop_check).name}' if loop_check else None,
     }
     # a fixed version: which version it was made from, and what was regenerated how;
-    # and for every version, what a fix of it may regenerate (config.INPAINT_*)
-    for key in ('base_version', 'parts', 'fixes', 'note', 'left_out', 'seed', 'limits'):
+    # and for every version, what a fix of it may regenerate (config.INPAINT_*) and each
+    # phase's BPM (for the breathing guide)
+    for key in ('base_version', 'parts', 'fixes', 'note', 'left_out', 'seed', 'limits', 'tempo'):
         if key in result:
             page[key] = result[key]
     return page
@@ -112,6 +114,7 @@ web_image = (
     modal.Image.debian_slim(python_version='3.12')
     .pip_install('fastapi[standard]', 'pydantic>=2')
     .add_local_dir(HERE / 'static', '/root/static')
+    .add_local_python_source('posts')
 )
 
 
@@ -257,6 +260,8 @@ def web():
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
 
+    import posts
+
     api = FastAPI(title='ResonaLife Functional Music GAI')
 
     # Middleware rather than a route dependency, so the page and the audio
@@ -284,6 +289,22 @@ def web():
         fixes: list[str] = []          # the problems ticked on the page
         note: str = ''                 # the listener's own words for the part
         seed: int | None = None
+
+    class PostRequest(BaseModel):
+        job_id: str                    # the session
+        version: int | None = None     # which of its versions; the newest by default
+        title: str
+        description: str = ''
+        author: str = ''               # a name to show, optional: everyone shares one login
+
+    def fresh_outputs():
+        """See what other containers committed to the outputs volume (a post made through
+        another web container). Reload refuses while a download is open; then what this
+        container already sees has to do."""
+        try:
+            outputs_vol.reload()
+        except Exception:
+            pass
 
     def check_call(job):
         """If the GPU call died without updating the job (model load failed,
@@ -408,11 +429,57 @@ def web():
             for j in snapshot[:50]
         ]
 
+    # Posts: one JSON file each in SESSIONS/_posts, committed as soon as it's written,
+    # so they outlive this container (and, unlike the jobs Dict, never expire)
+    @api.post('/posts')
+    def create_post(req: PostRequest):
+        job = jobs.get(req.job_id)
+        if not job or job.get('kind') == 'inpaint':
+            raise HTTPException(404, 'This session is no longer on the server.')
+        if job['status'] != 'done':
+            raise HTTPException(409, 'This session is not finished yet.')
+        try:
+            post = posts.make(job, req.version, req.title, req.description, req.author)
+        except LookupError as e:
+            raise HTTPException(404, str(e))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        fresh_outputs()
+        if posts.find(SESSIONS, post['session_id'], post['version']):
+            raise HTTPException(409, 'This version is already in Posts.')
+        posts.save(SESSIONS, post)
+        outputs_vol.commit()
+        return posts.summary(post)
+
+    @api.get('/posts')
+    def list_posts():
+        fresh_outputs()
+        return [posts.summary(p) for p in posts.load_all(SESSIONS)]
+
+    @api.get('/posts/{post_id}')
+    def get_post(post_id: str):
+        post = posts.load(SESSIONS, post_id)
+        if not post:
+            fresh_outputs()
+            post = posts.load(SESSIONS, post_id)
+        if not post:
+            raise HTTPException(404, 'This post has been deleted.')
+        return post
+
+    @api.delete('/posts/{post_id}')
+    def delete_post(post_id: str):
+        fresh_outputs()
+        if not posts.delete(SESSIONS, post_id):
+            raise HTTPException(404, 'This post has been deleted.')
+        outputs_vol.commit()
+        return {'deleted': post_id}
+
     @api.get('/audio/{folder}/{filename}')
     def audio(folder: str, filename: str):
         base = Path(SESSIONS).resolve()
         path = (base / folder / filename).resolve()
-        if not str(path).startswith(str(base) + os.sep):
+        # inside the sessions volume, and audio only (the posts' JSON files are there too)
+        if not str(path).startswith(str(base) + os.sep) or path.suffix not in ('.mp3', '.wav'):
             raise HTTPException(404, 'not found')
         if not path.is_file():
             try:
